@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import useSWR from "swr";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 
 type AnyObj = Record<string, any>;
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_new";
 
 // -------------------- Utils --------------------
 function getAt(obj: AnyObj, path: string) {
@@ -21,6 +22,7 @@ function setAt(obj: AnyObj, path: string, value: any) {
   cur[keys.at(-1)!] = value;
   return next;
 }
+
 function shallowEqual(a: any, b: any) {
   try {
     return JSON.stringify(a) === JSON.stringify(b);
@@ -29,12 +31,45 @@ function shallowEqual(a: any, b: any) {
   }
 }
 
+function unflatten(flat: Record<string, any>) {
+  const out: Record<string, any> = {};
+  for (const [path, value] of Object.entries(flat)) {
+    if (value === undefined) continue;
+    Object.assign(out, setAt(out, path, value));
+  }
+  return out;
+}
+
+// Entfernt "", undefined, leere Objekte und leere Arrays rekursiv
+function pruneEmpty(v: any): any {
+  if (Array.isArray(v)) {
+    const arr = v.map(pruneEmpty).filter((x) => x !== undefined);
+    return arr.length ? arr : undefined;
+  }
+  if (v && typeof v === "object") {
+    const obj: AnyObj = {};
+    for (const [k, val] of Object.entries(v)) {
+      const pruned = pruneEmpty(val);
+      if (pruned !== undefined) obj[k] = pruned;
+    }
+    return Object.keys(obj).length ? obj : undefined;
+  }
+  if (v === "" || v === undefined) return undefined; // 0/false bleiben erhalten
+  return v;
+}
+
+// Felder-Erkennung (wie bisher)
 const ENUMS: Record<string, string[]> = {
   "llm.family": ["qwen", "qwen2", "llama3", "phi3", "mistral"],
   "prompt.language": ["en", "de"],
   "prompt.style": ["qa", "steps"],
 };
-const BOOL_HINT = new Set<string>(["llm.use_mmap", "llm.use_mlock", "prompt.cite", "prompt.require_citations"]);
+const BOOL_HINT = new Set<string>([
+  "llm.use_mmap",
+  "llm.use_mlock",
+  "prompt.cite",
+  "prompt.require_citations",
+]);
 
 function flattenSection(sectionKey: string, sectionVal: any): { path: string; value: any }[] {
   const out: { path: string; value: any }[] = [];
@@ -52,15 +87,151 @@ function flattenSection(sectionKey: string, sectionVal: any): { path: string; va
   }
   return out;
 }
-
 function guessType(fullPath: string, v: any): "select" | "number" | "boolean" | "text" | "multiline" {
   if (ENUMS[fullPath]) return "select";
   if (BOOL_HINT.has(fullPath) || typeof v === "boolean") return "boolean";
   if (typeof v === "number") return "number";
   if (Array.isArray(v)) return "multiline";
-  if (typeof v === "string") return (v.includes("\n") ? "multiline" : "text");
+  if (typeof v === "string") return v.includes("\n") ? "multiline" : "text";
   if (v !== null && typeof v === "object") return "multiline";
   return "text";
+}
+
+// -------------------- AskRag --------------------
+function AskRag() {
+  const [q, setQ] = useState<string>("");
+  const [answer, setAnswer] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
+
+  function append(text: string) {
+    if (!text) return;
+    setAnswer((prev) => (prev ? prev + text : text));
+  }
+
+  function pushChunk(chunk: string, isSSE: boolean) {
+    if (!isSSE) {
+      append(chunk);
+      return;
+    }
+    const lines = chunk.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line) continue;
+      if (line.startsWith("data:")) append(line.slice(5).trimStart() + "\n");
+    }
+  }
+
+  async function ask() {
+    if (!q.trim()) return;
+    setAnswer("");
+    setLoading(true);
+    const ac = new AbortController();
+    abortRef.current = ac;
+
+    try {
+      const res = await fetch(RAG_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q }),
+        signal: ac.signal,
+        mode: "cors",
+        credentials: "omit",
+      });
+
+      if (!res.ok || !res.body) {
+        const text = await res.text().catch(() => "");
+        throw new Error(text || res.statusText);
+        }
+      const ct = (res.headers.get("content-type") || "").toLowerCase();
+      const isSSE = ct.includes("text/event-stream");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const chunk = decoder.decode(value, { stream: true });
+        pushChunk(chunk, isSSE);
+      }
+      const tail = decoder.decode();
+      if (tail) pushChunk(tail, isSSE);
+    } catch (e: any) {
+      if (e?.name !== "AbortError") {
+        append((answer ? "\n\n" : "") + "Error: " + (e?.message ?? String(e)));
+      }
+    } finally {
+      setLoading(false);
+      abortRef.current = null;
+    }
+  }
+
+  function stop() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
+  }
+
+  return (
+    <section className="rounded-xl border border-white/10 bg-white/[0.03] shadow-sm">
+      <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+        <h2 className="text-lg font-semibold">Ask the model (RAG)</h2>
+        <div className="flex items-center gap-2">
+          {!loading ? (
+            <button
+              onClick={ask}
+              className="inline-flex items-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+              disabled={!q.trim()}
+            >
+              ▶ Run
+            </button>
+          ) : (
+            <button
+              onClick={stop}
+              className="inline-flex items-center gap-2 rounded-md bg-rose-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/40"
+            >
+              ■ Stop
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="px-5 py-4 space-y-3">
+        <div className="grid grid-cols-[200px,1fr] items-start gap-3">
+          <div className="text-sm text-foreground truncate whitespace-nowrap select-none">
+            <span className="font-mono">question</span>
+          </div>
+          <div className="min-w-0">
+            <input
+              type="text"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
+              }}
+              placeholder="Type your question…"
+              className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+            />
+            <p className="mt-1 text-xs text-white/50">Press Ctrl/Cmd+Enter to run</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-[200px,1fr] items-start gap-3">
+          <div className="text-sm text-foreground truncate whitespace-nowrap select-none">
+            <span className="font-mono">answer</span>
+          </div>
+          <div className="min-w-0">
+            <pre className="w-full whitespace-pre-wrap rounded-md border border-white/15 bg-black/60 p-3 text-sm text-foreground min-h-24">
+              {answer || (loading ? "…" : "")}
+            </pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }
 
 // -------------------- Page --------------------
@@ -69,22 +240,34 @@ export default function Page() {
   const serverCfg = useMemo<AnyObj>(() => data?.data ?? {}, [data]);
   const [form, setForm] = useState<AnyObj>({});
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
+  const [savingAll, setSavingAll] = useState<boolean>(false);
 
   useEffect(() => {
-    if (!isLoading && data?.data) setForm(data.data);
-  }, [isLoading, data]);
+    if (data?.data && Object.keys(form).length === 0) {
+      setForm(data.data); // initial aus dem Backend
+    }
+  }, [data, form]);
+
+  function onChange(path: string, value: any) {
+    setForm((prev) => setAt(prev, path, value));
+  }
 
   async function reload() {
     await mutate();
   }
 
+  // SPEICHERN: nur die angeklickte Section → MERGE
   async function saveSection(sectionKey: string) {
     setSaving(sectionKey);
     try {
-      const res = await fetch("/api/config", {
+      const sectionVal = form?.[sectionKey];
+      const cleaned = pruneEmpty(structuredClone(sectionVal)) ?? {};
+      const payload = { data: { [sectionKey]: cleaned } };
+
+      const res = await fetch("/api/config?mode=merge", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: form }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -98,6 +281,30 @@ export default function Page() {
     }
   }
 
+  // SPEICHERN: kompletter Baum → REPLACE
+  async function saveAllReplace() {
+    setSavingAll(true);
+    try {
+      const cleaned = pruneEmpty(structuredClone(form)) ?? {};
+      const payload = { data: cleaned };
+
+      const res = await fetch("/api/config?mode=replace", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error ? JSON.stringify(j.error) : res.statusText);
+      }
+      await mutate();
+    } catch (e: any) {
+      alert("Fehler beim Speichern (vollständig): " + e.message);
+    } finally {
+      setSavingAll(false);
+    }
+  }
+
   function onFieldChange(sectionKey: string, fieldPath: string, nextValue: any) {
     const absolutePath = `${sectionKey}.${fieldPath}`;
     setForm((prev) => setAt(prev, absolutePath, nextValue));
@@ -105,8 +312,8 @@ export default function Page() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <div className="flex items-center gap-3 text-white/80">
+      <div className="min-h-screen flex items-center justify-center bg-black text-foreground">
+        <div className="flex items-center gap-3 text-foreground">
           <span className="h-3 w-3 animate-pulse rounded-full bg-white/60" />
           <span>Lade Konfiguration…</span>
         </div>
@@ -120,7 +327,7 @@ export default function Page() {
   const ordered = [...preferred.filter((k) => allKeys.includes(k)), ...allKeys.filter((k) => !preferred.includes(k))];
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen background text-foreground/70">
       {/* Header */}
       <header className="sticky top-0 z-10 border-b border-white/10 bg-black/70 backdrop-blur">
         <div className="mx-auto max-w-7xl px-6 py-4 flex flex-wrap items-center justify-between gap-3">
@@ -128,7 +335,7 @@ export default function Page() {
             <div className="h-8 w-8 rounded-md bg-white/20" />
             <div>
               <h1 className="text-xl font-semibold">RAG Config Editor</h1>
-              <p className="text-xs text-white/70">
+              <p className="text-xs text-foreground">
                 Datei: <span className="font-mono">{filePath}</span>
               </p>
             </div>
@@ -136,20 +343,25 @@ export default function Page() {
           <div className="flex items-center gap-2">
             <button
               onClick={reload}
-              className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm font-medium text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+              className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm font-medium text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
             >
               ⟳ Objekte & Werte neu laden
+            </button>
+            <button
+              onClick={saveAllReplace}
+              className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-foreground hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-60"
+              disabled={savingAll}
+              title="Schreibt den gesamten Formularzustand (Replace)"
+            >
+              {savingAll && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
+              Speichern (vollständig)
             </button>
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-8">
-        {/*
-        <div className="rounded-lg border border-white/10 bg-white/5 text-white px-4 py-3 text-sm">
-          • Zweispaltiges Layout ab großer Breite • Links in jeder Zelle: Param-Name • Rechts: Eingabefeld • Speichern pro Section.
-        </div>
-        */}
+        <AskRag />
 
         {ordered.map((sectionKey) => {
           const sectionVal = form?.[sectionKey];
@@ -161,20 +373,23 @@ export default function Page() {
               <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-semibold">{sectionKey}</h2>
-                  {dirty && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-white">ungespeichert</span>}
+                  {dirty && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-foreground">ungespeichert</span>}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setForm((prev) => setAt(prev, sectionKey, serverCfg?.[sectionKey]))}
-                    className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-white hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
-                    disabled={saving === sectionKey}
+                    onClick={() =>
+                      setForm((prev) => setAt(prev, sectionKey, structuredClone(serverCfg?.[sectionKey])))
+                    }
+                    className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+                    disabled={saving === sectionKey || savingAll}
                   >
                     Zurücksetzen
                   </button>
                   <button
                     onClick={() => saveSection(sectionKey)}
-                    disabled={saving === sectionKey}
-                    className="inline-flex items-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-white hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+                    disabled={saving === sectionKey || savingAll}
+                    className="inline-flex items-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+                    title="Speichert nur diese Section (Merge)"
                   >
                     {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
                     Speichern
@@ -183,7 +398,6 @@ export default function Page() {
               </div>
 
               <div className="px-5 py-4">
-                {/* NEU: 2 Spalten ab lg */}
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   {rows.map(({ path, value }) => (
                     <Row
@@ -220,22 +434,20 @@ function Row({
   onChange: (v: any) => void;
 }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-[200px,1fr] items-center gap-3 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2">
-      {/* Parametername (read-only) */}
-      <div className="text-sm text-white/80 truncate" title={label}>
+    <div className="grid grid-cols-[200px,1fr] items-center gap-3 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2">
+      <div className="text-sm text-foreground truncate whitespace-nowrap" title={label}>
         <span className="font-mono">{label}</span>
       </div>
 
-      {/* Eingabefeld */}
-      <div>
+      <div className="min-w-0">
         {fieldType === "select" && enumValues ? (
           <select
             value={value ?? ""}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-white placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
           >
             {enumValues.map((opt) => (
-              <option key={opt} value={opt} className="bg-black text-white">
+              <option key={opt} value={opt} className="bg-black text-foreground">
                 {opt}
               </option>
             ))}
@@ -248,19 +460,19 @@ function Row({
               onChange={(e) => onChange(e.target.checked)}
               className="h-4 w-4 rounded border-white/30 bg-black text-sky-500 focus:ring-sky-500/40"
             />
-            <span className="text-sm text-white/80">{value ? "true" : "false"}</span>
+            <span className="text-sm text-foreground">{value ? "true" : "false"}</span>
           </label>
         ) : fieldType === "number" ? (
           <input
             type="number"
-            value={Number.isFinite(value) ? value : value === "" ? "" : ""}
+            value={value ?? ""}
             onChange={(e) => {
               const raw = e.target.value;
               if (raw === "") return onChange(undefined);
               const n = Number(raw);
               onChange(Number.isNaN(n) ? undefined : n);
             }}
-            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-white placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
           />
         ) : fieldType === "multiline" ? (
           <textarea
@@ -280,7 +492,7 @@ function Row({
                 onChange(t);
               }
             }}
-            className="h-28 w-full rounded-md border border-white/20 bg-black px-3 py-2 font-mono text-sm text-white placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+            className="h-28 w-full rounded-md border border-white/20 bg-black px-3 py-2 font-mono text-sm text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
             spellCheck={false}
           />
         ) : (
@@ -288,7 +500,7 @@ function Row({
             type="text"
             value={value ?? ""}
             onChange={(e) => onChange(e.target.value)}
-            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-white placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
             placeholder="Wert eingeben…"
           />
         )}
