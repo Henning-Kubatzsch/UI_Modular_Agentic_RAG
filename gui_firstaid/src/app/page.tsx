@@ -16,8 +16,9 @@ function setAt(obj: AnyObj, path: string, value: any) {
   const next = structuredClone(obj ?? {});
   let cur: any = next;
   for (let i = 0; i < keys.length - 1; i++) {
-    if (cur[keys[i]] == null || typeof cur[keys[i]] !== "object") cur[keys[i]] = {};
-    cur = cur[keys[i]];
+    const k = keys[i];
+    if (cur[k] == null || typeof cur[k] !== "object" || Array.isArray(cur[k])) cur[k] = {};
+    cur = cur[k];
   }
   cur[keys.at(-1)!] = value;
   return next;
@@ -40,7 +41,7 @@ function unflatten(flat: Record<string, any>) {
   return out;
 }
 
-// Entfernt "", undefined, leere Objekte und leere Arrays rekursiv
+// Entfernt "", undefined, leere Objekte und leere Arrays rekursiv (0/false bleiben)
 function pruneEmpty(v: any): any {
   if (Array.isArray(v)) {
     const arr = v.map(pruneEmpty).filter((x) => x !== undefined);
@@ -58,7 +59,21 @@ function pruneEmpty(v: any): any {
   return v;
 }
 
-// Felder-Erkennung (wie bisher)
+// Entfernt bekannte leere Teilbäume, falls der Nutzer sie erzeugt hat (z. B. decoding: {})
+function normalizeEmptyBranches(cfg: AnyObj) {
+  if (cfg?.llm?.decoding && Object.keys(cfg.llm.decoding).length === 0) {
+    delete cfg.llm.decoding;
+  }
+  if (cfg?.llm && Object.keys(cfg.llm).length === 0) {
+    delete cfg.llm;
+  }
+  if (cfg?.retrieval && Object.keys(cfg.retrieval).length === 0) {
+    delete cfg.retrieval;
+  }
+  return cfg;
+}
+
+// Felder-Erkennung
 const ENUMS: Record<string, string[]> = {
   "llm.family": ["qwen", "qwen2", "llama3", "phi3", "mistral"],
   "prompt.language": ["en", "de"],
@@ -95,6 +110,15 @@ function guessType(fullPath: string, v: any): "select" | "number" | "boolean" | 
   if (typeof v === "string") return v.includes("\n") ? "multiline" : "text";
   if (v !== null && typeof v === "object") return "multiline";
   return "text";
+}
+
+function safeParseJSONLoose(input: string): any {
+  // Versucht JSON.parse, lässt sonst String stehen
+  try {
+    return JSON.parse(input);
+  } catch {
+    return input;
+  }
 }
 
 // -------------------- AskRag --------------------
@@ -142,15 +166,31 @@ function AskRag() {
         credentials: "omit",
       });
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         const text = await res.text().catch(() => "");
         throw new Error(text || res.statusText);
-        }
+      }
+      // Content-Type prüfen
       const ct = (res.headers.get("content-type") || "").toLowerCase();
       const isSSE = ct.includes("text/event-stream");
+
+      if (!res.body) {
+        // Fallback: evtl. JSON-Antwort ohne Stream
+        const text = await res.text().catch(() => "");
+        if (text) {
+          try {
+            const j = JSON.parse(text);
+            append(j?.answer ?? text);
+          } catch {
+            append(text);
+          }
+        }
+        return;
+      }
+
+      // Streaming lesen
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
@@ -242,9 +282,10 @@ export default function Page() {
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
   const [savingAll, setSavingAll] = useState<boolean>(false);
 
+  // Initialen Zustand aus Backend übernehmen
   useEffect(() => {
     if (data?.data && Object.keys(form).length === 0) {
-      setForm(data.data); // initial aus dem Backend
+      setForm(data.data);
     }
   }, [data, form]);
 
@@ -256,18 +297,30 @@ export default function Page() {
     await mutate();
   }
 
+  // Hilfsfunktion: Payload für Section bauen (pruned + normalisiert)
+  function buildSectionPayload(sectionKey: string) {
+    const sectionVal = form?.[sectionKey];
+    // Tief kopieren -> prunen -> bekannte leere Zweige löschen
+    const cleaned = pruneEmpty(structuredClone(sectionVal)) ?? {};
+    const normalized = normalizeEmptyBranches(structuredClone({ [sectionKey]: cleaned }));
+    return normalized && normalized[sectionKey] ? { [sectionKey]: normalized[sectionKey] } : {};
+  }
+
   // SPEICHERN: nur die angeklickte Section → MERGE
   async function saveSection(sectionKey: string) {
     setSaving(sectionKey);
     try {
-      const sectionVal = form?.[sectionKey];
-      const cleaned = pruneEmpty(structuredClone(sectionVal)) ?? {};
-      const payload = { data: { [sectionKey]: cleaned } };
+      const sectionPayload = buildSectionPayload(sectionKey);
+      if (Object.keys(sectionPayload).length === 0) {
+        // Nichts zu speichern – vermeide leere Decoding-Objekte & Co.
+        setSaving(null);
+        return;
+      }
 
       const res = await fetch("/api/config?mode=merge", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ data: sectionPayload }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -286,12 +339,16 @@ export default function Page() {
     setSavingAll(true);
     try {
       const cleaned = pruneEmpty(structuredClone(form)) ?? {};
-      const payload = { data: cleaned };
+      const normalized = normalizeEmptyBranches(structuredClone(cleaned));
+      if (!normalized || Object.keys(normalized).length === 0) {
+        setSavingAll(false);
+        return;
+      }
 
       const res = await fetch("/api/config?mode=replace", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ data: normalized }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -443,9 +500,12 @@ function Row({
         {fieldType === "select" && enumValues ? (
           <select
             value={value ?? ""}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => onChange(e.target.value || undefined)}
             className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
           >
+            <option value="" className="bg-black text-foreground">
+              — auswählen —
+            </option>
             {enumValues.map((opt) => (
               <option key={opt} value={opt} className="bg-black text-foreground">
                 {opt}
@@ -483,15 +543,7 @@ function Row({
                 ? JSON.stringify(value, null, 2)
                 : value ?? ""
             }
-            onChange={(e) => {
-              const t = e.target.value;
-              try {
-                const parsed = JSON.parse(t);
-                onChange(parsed);
-              } catch {
-                onChange(t);
-              }
-            }}
+            onChange={(e) => onChange(safeParseJSONLoose(e.target.value))}
             className="h-28 w-full rounded-md border border-white/20 bg-black px-3 py-2 font-mono text-sm text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
             spellCheck={false}
           />
@@ -499,7 +551,7 @@ function Row({
           <input
             type="text"
             value={value ?? ""}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
             className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
             placeholder="Wert eingeben…"
           />
