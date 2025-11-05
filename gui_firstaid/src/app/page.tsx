@@ -5,7 +5,7 @@ import React, { useEffect, useMemo, useState, useRef } from "react";
 
 type AnyObj = Record<string, any>;
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
-const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_new";
+const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui";
 
 // -------------------- Utils --------------------
 function getAt(obj: AnyObj, path: string) {
