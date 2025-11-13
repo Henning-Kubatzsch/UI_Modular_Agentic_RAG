@@ -1,4 +1,5 @@
 // utils.ts
+// 
 export function pruneEmpty(v: any): any {
   if (Array.isArray(v)) {
     const arr = v.map(pruneEmpty).filter((x) => x !== undefined);
@@ -12,5 +13,7 @@ export function pruneEmpty(v: any): any {
     }
     return Object.keys(o).length ? o : undefined;
   }
+  // read like this: if v is empty string or it is undefined -> return undefined, else return v
   return v === "" || v === undefined ? undefined : v; // 0/false bleiben
 }
+

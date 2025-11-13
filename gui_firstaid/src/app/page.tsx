@@ -4,13 +4,16 @@ import useSWR from "swr";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 
 type AnyObj = Record<string, any>;
+// fetcher gets url and makes a HTTP GET Request -> contacts a HTTP Server
+// r: response object (json string) -> r.json(): parses json string to a JavaScript object
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui";
 
 // -------------------- Utils --------------------
-function getAt(obj: AnyObj, path: string) {
-  return path.split(".").reduce((acc: any, k) => (acc != null ? acc[k] : undefined), obj);
-}
+//function getAt(obj: AnyObj, path: string) {
+//  return path.split(".").reduce((acc: any, k) => (acc != null ? acc[k] : undefined), obj);
+//}
+
 function setAt(obj: AnyObj, path: string, value: any) {
   const keys = path.split(".");
   const next = structuredClone(obj ?? {});
@@ -30,15 +33,6 @@ function shallowEqual(a: any, b: any) {
   } catch {
     return a === b;
   }
-}
-
-function unflatten(flat: Record<string, any>) {
-  const out: Record<string, any> = {};
-  for (const [path, value] of Object.entries(flat)) {
-    if (value === undefined) continue;
-    Object.assign(out, setAt(out, path, value));
-  }
-  return out;
 }
 
 // Entfernt "", undefined, leere Objekte und leere Arrays rekursiv (0/false bleiben)
@@ -276,6 +270,9 @@ function AskRag() {
 
 // -------------------- Page --------------------
 export default function Page() {
+  // isLoading: 
+  // mutate: reruns fetcher() and updates data
+  // data: initialy undefined, contains data.path, data.data
   const { data, isLoading, mutate } = useSWR("/api/config", fetcher);
   const serverCfg = useMemo<AnyObj>(() => data?.data ?? {}, [data]);
   const [form, setForm] = useState<AnyObj>({});
@@ -283,44 +280,97 @@ export default function Page() {
   const [savingAll, setSavingAll] = useState<boolean>(false);
 
   // Initialen Zustand aus Backend übernehmen
+  // from (): effect function
+
   useEffect(() => {
-    if (data?.data && Object.keys(form).length === 0) {
+    //if (data?.data && Object.keys(form).length === 0) {
+    if (data?.data){
       setForm(data.data);
     }
-  }, [data, form]);
+  // dependency Array -> effect reruns whenerver ANY value in the dependeny array changes
+  //}, [data, form]);
+  }, [data]);
 
-  function onChange(path: string, value: any) {
-    setForm((prev) => setAt(prev, path, value));
-  }
+  //function onChange(path: string, value: any) {
+  //  setForm((prev) => setAt(prev, path, value));
+  //}
 
   async function reload() {
     await mutate();
   }
 
-  // Hilfsfunktion: Payload für Section bauen (pruned + normalisiert)
+  // helper function: clean/ built Payload for section (pruned + normalize)
   function buildSectionPayload(sectionKey: string) {
+    // get js object with section values: sectionVal = {data ...}
     const sectionVal = form?.[sectionKey];
-    // Tief kopieren -> prunen -> bekannte leere Zweige löschen
+    // deep copy + remove empty values
+    // structuredClon(): method of Window interface
     const cleaned = pruneEmpty(structuredClone(sectionVal)) ?? {};
-    const normalized = normalizeEmptyBranches(structuredClone({ [sectionKey]: cleaned }));
-    return normalized && normalized[sectionKey] ? { [sectionKey]: normalized[sectionKey] } : {};
+    const normalized = pruneEmpty(structuredClone({[sectionKey]: cleaned}));
+    return normalized && normalized[sectionKey] ? normalized : {};
   }
-
-  // SPEICHERN: nur die angeklickte Section → MERGE
+ 
+  // SAVE: only selected section → MERGE
   async function saveSection(sectionKey: string) {
+    // setSaving: React useState hook, sets variable string saving (sectionKey) 
     setSaving(sectionKey);
     try {
+      // get cleaned section or key = {} object contains no properties
       const sectionPayload = buildSectionPayload(sectionKey);
       if (Object.keys(sectionPayload).length === 0) {
-        // Nichts zu speichern – vermeide leere Decoding-Objekte & Co.
+        // nothing to store, avoid empty objects -> why?
         setSaving(null);
         return;
       }
-
       const res = await fetch("/api/config?mode=merge", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: sectionPayload }),
+      });
+      if (!res.ok) {
+        // parsing error to {}
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j?.error ? JSON.stringify(j.error) : res.statusText);
+      }
+      await mutate();
+    } catch (e: any) {
+      alert("Error while saving: " + e.message);
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  // SAVE: complete tree → REPLACE, TODO: replace saveAllReplace as if a value field is empty the property gets deleted
+  async function saveAllReplace() {
+    setSavingAll(true);
+    try {
+      //if i call pruneEmpty() in this way, entries could be deleted if form values are empty      
+      for (const sectionKey in form){
+        const section = form[sectionKey];
+        console.log(section);
+        if(!section || typeof section !== 'object') continue;
+        for (const propkey in section){
+          console.log(propkey)
+          const value = section[propkey];
+          if (value === undefined || value === "" || value === null){
+            alert(`Please leave no field empty before saving. You missed ${propkey}`);
+            setSavingAll(false);
+            return;
+          }
+        }
+      }
+      
+      const cleaned = pruneEmpty(structuredClone(form)) ?? {};
+      const normalized = normalizeEmptyBranches(structuredClone(cleaned));
+      if (!normalized || Object.keys(normalized).length === 0) {
+        setSavingAll(false);
+        return;
+      }
+      const res = await fetch("/api/config?mode=replace", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        // body: JSON.stringify({ data: normalized }),
+        body: JSON.stringify({data : normalized})
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -328,27 +378,30 @@ export default function Page() {
       }
       await mutate();
     } catch (e: any) {
-      alert("Fehler beim Speichern: " + e.message);
+      alert("Fehler beim Speichern (vollständig): " + e.message);
     } finally {
-      setSaving(null);
+      setSavingAll(false);
     }
   }
 
-  // SPEICHERN: kompletter Baum → REPLACE
-  async function saveAllReplace() {
+  
+
+  // SAVE: complete tree → REPLACE, TODO: replace saveAllReplace as if a value field is empty the property gets deleted
+  async function saveAllReplace2() {
     setSavingAll(true);
     try {
+      //if i call pruneEmpty() in this way, entries could be deleted if form values are empty      
       const cleaned = pruneEmpty(structuredClone(form)) ?? {};
       const normalized = normalizeEmptyBranches(structuredClone(cleaned));
       if (!normalized || Object.keys(normalized).length === 0) {
         setSavingAll(false);
         return;
       }
-
       const res = await fetch("/api/config?mode=replace", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ data: normalized }),
+        // body: JSON.stringify({ data: normalized }),
+        body: JSON.stringify({data : normalized})
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
