@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import React, { useEffect, useMemo, useState, useRef } from "react";
+import { pruneEmpty } from "../../utils";
 
 type AnyObj = Record<string, any>;
 // fetcher gets url and makes a HTTP GET Request -> contacts a HTTP Server
@@ -35,38 +36,6 @@ function shallowEqual(a: any, b: any) {
   }
 }
 
-// Entfernt "", undefined, leere Objekte und leere Arrays rekursiv (0/false bleiben)
-function pruneEmpty(v: any): any {
-  if (Array.isArray(v)) {
-    const arr = v.map(pruneEmpty).filter((x) => x !== undefined);
-    return arr.length ? arr : undefined;
-  }
-  if (v && typeof v === "object") {
-    const obj: AnyObj = {};
-    for (const [k, val] of Object.entries(v)) {
-      const pruned = pruneEmpty(val);
-      if (pruned !== undefined) obj[k] = pruned;
-    }
-    return Object.keys(obj).length ? obj : undefined;
-  }
-  if (v === "" || v === undefined) return undefined; // 0/false bleiben erhalten
-  return v;
-}
-
-// Entfernt bekannte leere Teilbäume, falls der Nutzer sie erzeugt hat (z. B. decoding: {})
-function normalizeEmptyBranches(cfg: AnyObj) {
-  if (cfg?.llm?.decoding && Object.keys(cfg.llm.decoding).length === 0) {
-    delete cfg.llm.decoding;
-  }
-  if (cfg?.llm && Object.keys(cfg.llm).length === 0) {
-    delete cfg.llm;
-  }
-  if (cfg?.retrieval && Object.keys(cfg.retrieval).length === 0) {
-    delete cfg.retrieval;
-  }
-  return cfg;
-}
-
 // Felder-Erkennung
 const ENUMS: Record<string, string[]> = {
   "llm.family": ["qwen", "qwen2", "llama3", "phi3", "mistral"],
@@ -82,6 +51,8 @@ const BOOL_HINT = new Set<string>([
 
 function flattenSection(sectionKey: string, sectionVal: any): { path: string; value: any }[] {
   const out: { path: string; value: any }[] = [];
+
+  // iterate through key of sectionKey object: adds prefix , value data objects to out
   function walk(prefix: string, v: any) {
     if (v !== null && typeof v === "object" && !Array.isArray(v)) {
       Object.keys(v).forEach((k) => walk(prefix ? `${prefix}.${k}` : k, v[k]));
@@ -90,12 +61,15 @@ function flattenSection(sectionKey: string, sectionVal: any): { path: string; va
     }
   }
   if (sectionVal !== null && typeof sectionVal === "object" && !Array.isArray(sectionVal)) {
+    // if sectionVal is an object and no Array: iterate through key
     Object.keys(sectionVal).forEach((k) => walk(k, sectionVal[k]));
+  // if sectionKey is no object/ an Array: push path and value to out
   } else {
     out.push({ path: sectionKey, value: sectionVal });
   }
   return out;
 }
+
 function guessType(fullPath: string, v: any): "select" | "number" | "boolean" | "text" | "multiline" {
   if (ENUMS[fullPath]) return "select";
   if (BOOL_HINT.has(fullPath) || typeof v === "boolean") return "boolean";
@@ -107,7 +81,6 @@ function guessType(fullPath: string, v: any): "select" | "number" | "boolean" | 
 }
 
 function safeParseJSONLoose(input: string): any {
-  // Versucht JSON.parse, lässt sonst String stehen
   try {
     return JSON.parse(input);
   } catch {
@@ -122,12 +95,15 @@ function AskRag() {
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  // only executed at first render as the dependeny Array is empty [], but the method body at this moment is empty
+  // also called at unmount, all useEffect methods have an cleanup function -> when unmount all AvortController get aborted
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
 
   function append(text: string) {
     if (!text) return;
+    // prev: actual state passed from react
     setAnswer((prev) => (prev ? prev + text : text));
   }
 
@@ -136,14 +112,17 @@ function AskRag() {
       append(chunk);
       return;
     }
+    //splits at break lines, /: start and end of Regex, ?: optional, 
     const lines = chunk.split(/\r?\n/);
     for (const line of lines) {
       if (!line) continue;
+      // slice(5): cut first 5 digits, trimStart(): deletes whitespace at beginning
       if (line.startsWith("data:")) append(line.slice(5).trimStart() + "\n");
     }
   }
 
   async function ask() {
+    // if only q only consists of whitespaces: return
     if (!q.trim()) return;
     setAnswer("");
     setLoading(true);
@@ -164,12 +143,12 @@ function AskRag() {
         const text = await res.text().catch(() => "");
         throw new Error(text || res.statusText);
       }
-      // Content-Type prüfen
+      // check content type
       const ct = (res.headers.get("content-type") || "").toLowerCase();
       const isSSE = ct.includes("text/event-stream");
 
       if (!res.body) {
-        // Fallback: evtl. JSON-Antwort ohne Stream
+        // Fallback: JSON answer without stream
         const text = await res.text().catch(() => "");
         if (text) {
           try {
@@ -182,15 +161,18 @@ function AskRag() {
         return;
       }
 
-      // Streaming lesen
+      // read stream
+      // getReader() comes from fetch() and returns a ReadableStream instance
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       while (true) {
+        // every reader.read() call takes one chunk from buffer, if there is no chunk the the method is blocked
         const { value, done } = await reader.read();
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
         pushChunk(chunk, isSSE);
       }
+      // used if stream aborts before reading whole buffer
       const tail = decoder.decode();
       if (tail) pushChunk(tail, isSSE);
     } catch (e: any) {
@@ -279,8 +261,6 @@ export default function Page() {
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
   const [savingAll, setSavingAll] = useState<boolean>(false);
 
-  // Initialen Zustand aus Backend übernehmen
-  // from (): effect function
 
   useEffect(() => {
     //if (data?.data && Object.keys(form).length === 0) {
@@ -301,12 +281,13 @@ export default function Page() {
 
   // helper function: clean/ built Payload for section (pruned + normalize)
   function buildSectionPayload(sectionKey: string) {
-    // get js object with section values: sectionVal = {data ...}
     const sectionVal = form?.[sectionKey];
-    // deep copy + remove empty values
-    // structuredClon(): method of Window interface
     const cleaned = pruneEmpty(structuredClone(sectionVal)) ?? {};
+    console.log("\n\nCleaned\n\n");
+    console.log(cleaned)
     const normalized = pruneEmpty(structuredClone({[sectionKey]: cleaned}));
+    console.log("\n\nNormalized\n\n");
+    console.log(normalized);
     return normalized && normalized[sectionKey] ? normalized : {};
   }
  
@@ -318,7 +299,7 @@ export default function Page() {
       // get cleaned section or key = {} object contains no properties
       const sectionPayload = buildSectionPayload(sectionKey);
       if (Object.keys(sectionPayload).length === 0) {
-        // nothing to store, avoid empty objects -> why?
+        // nothing to store, avoid empty objects
         setSaving(null);
         return;
       }
@@ -343,14 +324,16 @@ export default function Page() {
   // SAVE: complete tree → REPLACE, TODO: replace saveAllReplace as if a value field is empty the property gets deleted
   async function saveAllReplace() {
     setSavingAll(true);
+    console.log("\n\n");
+    console.log("Form:\n\n")
+    console.log(form);
+    console.log("\n\n");
     try {
-      //if i call pruneEmpty() in this way, entries could be deleted if form values are empty      
+      // check if there are empty fields, if so: notify the user
       for (const sectionKey in form){
         const section = form[sectionKey];
-        console.log(section);
         if(!section || typeof section !== 'object') continue;
         for (const propkey in section){
-          console.log(propkey)
           const value = section[propkey];
           if (value === undefined || value === "" || value === null){
             alert(`Please leave no field empty before saving. You missed ${propkey}`);
@@ -358,50 +341,16 @@ export default function Page() {
             return;
           }
         }
-      }
-      
+      }      
       const cleaned = pruneEmpty(structuredClone(form)) ?? {};
-      const normalized = normalizeEmptyBranches(structuredClone(cleaned));
-      if (!normalized || Object.keys(normalized).length === 0) {
+      if (!cleaned || Object.keys(cleaned).length === 0) {
         setSavingAll(false);
         return;
       }
       const res = await fetch("/api/config?mode=replace", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        // body: JSON.stringify({ data: normalized }),
-        body: JSON.stringify({data : normalized})
-      });
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j?.error ? JSON.stringify(j.error) : res.statusText);
-      }
-      await mutate();
-    } catch (e: any) {
-      alert("Fehler beim Speichern (vollständig): " + e.message);
-    } finally {
-      setSavingAll(false);
-    }
-  }
-
-  
-
-  // SAVE: complete tree → REPLACE, TODO: replace saveAllReplace as if a value field is empty the property gets deleted
-  async function saveAllReplace2() {
-    setSavingAll(true);
-    try {
-      //if i call pruneEmpty() in this way, entries could be deleted if form values are empty      
-      const cleaned = pruneEmpty(structuredClone(form)) ?? {};
-      const normalized = normalizeEmptyBranches(structuredClone(cleaned));
-      if (!normalized || Object.keys(normalized).length === 0) {
-        setSavingAll(false);
-        return;
-      }
-      const res = await fetch("/api/config?mode=replace", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        // body: JSON.stringify({ data: normalized }),
-        body: JSON.stringify({data : normalized})
+        body: JSON.stringify({data : cleaned})
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
