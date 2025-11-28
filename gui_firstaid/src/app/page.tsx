@@ -4,6 +4,8 @@ import useSWR from "swr";
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { pruneEmpty } from "../../utils";
 
+
+
 type AnyObj = Record<string, any>;
 // fetcher gets url and makes a HTTP GET Request -> contacts a HTTP Server
 // r: response object (json string) -> r.json(): parses json string to a JavaScript object
@@ -95,6 +97,13 @@ function AskRag() {
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  const [isChromeIOS, setIsChromeIOS] = useState(false);
+
+  useEffect(() => {
+    setIsChromeIOS(/CriOS/.test(navigator.userAgent));
+    return() => abortRef.current?.abort();
+  }, []);
+
   // only executed at first render as the dependeny Array is empty [], but the method body at this moment is empty
   // also called at unmount, all useEffect methods have an cleanup function -> when unmount all AvortController get aborted
   useEffect(() => {
@@ -121,7 +130,51 @@ function AskRag() {
     }
   }
 
-  async function ask() {
+  async function ask(){
+    if (isChromeIOS){
+      await askChromeIOS();
+    }else{
+      await askStandard();
+    }
+  }
+
+  async function askChromeIOS() {
+      if (!q.trim()) return;
+      setAnswer("");
+      setLoading(true);
+      
+      try {
+        const res = await fetch(RAG_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ q }),
+          mode: "cors",
+          credentials: "omit",
+        });
+
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(text || res.statusText);
+        }
+
+        // ✅ Warte auf komplette Response (kein Streaming)
+        const text = await res.text();
+        
+        try {
+          const json = JSON.parse(text);
+          append(json?.answer ?? text);
+        } catch {
+          append(text);
+        }
+        
+      } catch (e: any) {
+        append((answer ? "\n\n" : "") + "Error: " + (e?.message ?? String(e)));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+  async function askStandard() {
     // if only q only consists of whitespaces: return
     if (!q.trim()) return;
     setAnswer("");
@@ -192,16 +245,19 @@ function AskRag() {
   }
 
   return (
-    //<section className="rounded-xl border border-white/10 bg-white/[0.03] ">
-    <section className="rounded-xl border border-[#3b82f6]/30 bg-white/[0.13] ">
+    //<section className="rounded-xl border border-[#3b82f6]/30 bg-white/[0.13]">
+    <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
         <h2 className="text-lg font-semibold">Ask the model (RAG)</h2>     
         <div className="flex items-center gap-2">
-          
+          <button className="items-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+          >
+            Try Shit  
+          </button>
           {!loading ? (
             <button
               onClick={ask}
-              className="inline-flex items-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+              className="rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
               disabled={!q.trim()}
             >
               ▶ Run
@@ -219,7 +275,7 @@ function AskRag() {
 
       <div className="px-5 py-4 space-y-3">
         <div className="grid grid-cols-[200px,1fr] items-start gap-3">
-          <div className="text-sm text-foreground truncate whitespace-nowrap select-none">
+          <div className="text-sm text-foreground whitespace-nowrap select-none">
             <span className="font-mono">question</span>
           </div>
           <div className="min-w-0">
@@ -231,7 +287,7 @@ function AskRag() {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
               }}
               placeholder="Type your question…"
-              className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+              className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-1 focus:ring-sky-500/40"
             />
             <p className="mt-1 text-xs text-white/50">Press Ctrl/Cmd+Enter to run</p>
           </div>
@@ -242,7 +298,7 @@ function AskRag() {
             <span className="font-mono">answer</span>
           </div>
           <div className="min-w-0">
-            <pre className="w-full whitespace-pre-wrap rounded-md border border-white/15 bg-black/60 p-3 text-sm text-foreground min-h-24">
+            <pre className="w-full whitespace-pre-wrap rounded-md border border-white/15 bg-black/60 p-3 text-sm text-foreground min-h-24 max-h-96 overflow-y-auto">
               {answer || (loading ? "…" : "")}
             </pre>
           </div>
@@ -265,17 +321,19 @@ export default function Page() {
 
 
   useEffect(() => {
-    //if (data?.data && Object.keys(form).length === 0) {
-    if (data?.data){
+    if (data?.data && Object.keys(form).length === 0) {
+    //if (data?.data){
       setForm(data.data);
     }
   // dependency Array -> effect reruns whenerver ANY value in the dependeny array changes
   //}, [data, form]);
   }, [data]);
 
-  //function onChange(path: string, value: any) {
-  //  setForm((prev) => setAt(prev, path, value));
-  //}
+  /*
+  function onChange(path: string, value: any) {
+    setForm((prev) => setAt(prev, path, value));
+  }
+  */
 
   async function reload() {
     await mutate();
@@ -397,7 +455,8 @@ export default function Page() {
             <div>
               <h1 className="text-xl font-semibold">RAG Config Editor</h1>
               <p className="text-xs text-foreground">
-                Datei: <span className="font-mono">{filePath}</span>
+               {/*Datei: <span className="font-mono">{filePath}</span>*/}
+               Space for File Path
               </p>
             </div>
           </div>
