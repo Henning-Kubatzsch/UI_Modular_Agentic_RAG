@@ -247,6 +247,11 @@ function AskRag() {
   return (
     //<section className="rounded-xl border border-[#3b82f6]/30 bg-white/[0.13]">
     <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
+      <div className="flex p-3 border-2 rounded-md text-md">
+        <h1 className="">
+          das ist ja was im ganzen
+        </h1>
+      </div>
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
         <h2 className="text-lg font-semibold">Ask the model (RAG)</h2>     
         <div className="flex items-center gap-2">

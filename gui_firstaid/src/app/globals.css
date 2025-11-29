@@ -20,9 +20,21 @@ body {
 }
 
 
-/* Responsive: smaller label width on mobile devices */
+/* Responsive: smaller labels on mobile devices */
 @media (max-width: 420px) {
   :root {
     --row-label-w: 160px;
   }
+}
+
+@layer base {
+    :root{
+        --color-black: #000000;
+        --color-white: #ffffff;
+    }
+    h1 {
+        font-size: var(--text-3xl);
+        padding-left: 4px;
+        color: var(--color-slate-400);
+    }
 }
