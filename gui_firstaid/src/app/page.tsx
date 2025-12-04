@@ -1,7 +1,7 @@
 "use client";
 
 import useSWR from "swr";
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { pruneEmpty } from "../../utils";
 
 
@@ -12,22 +12,50 @@ type AnyObj = Record<string, any>;
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui";
 
-// -------------------- Utils --------------------
-//function getAt(obj: AnyObj, path: string) {
-//  return path.split(".").reduce((acc: any, k) => (acc != null ? acc[k] : undefined), obj);
-//}
+// -------------------- Utils --------------------@
 
-function setAt(obj: AnyObj, path: string, value: any) {
+function setAt2(prevForm: AnyObj, path: string, newValue: any){
+
+  const nextForm = structuredClone(prevForm);
+
+  // TODO: take nextForm and update path with newValue
+
+  console.log("incide setAt()");
+  console.log(JSON.parse(JSON.stringify(nextForm)));
+
+  nextForm.path = newValue;
+  return nextForm;
+}
+
+
+function setAt(prevForm: AnyObj, path: string, newValue: any) {
+
   const keys = path.split(".");
-  const next = structuredClone(obj ?? {});
-  let cur: any = next;
+
+  /*
+  console.log("keys: ", keys);
+  console.log("value: ", newValue);
+  console.log("prev: ", prevForm);
+  */
+
+  const nextForm = structuredClone(prevForm ?? {});
+
+  //console.log("Entering: ", shallowEqual(prevForm, nextForm), JSON.parse(JSON.stringify(nextForm)));
+  let cur: any = nextForm;
+
+  //console.log("cur before loop: ", cur);
+
   for (let i = 0; i < keys.length - 1; i++) {
-    const k = keys[i];
+    //console.log("key length: ", keys.length);
+    const k = keys[i];    
     if (cur[k] == null || typeof cur[k] !== "object" || Array.isArray(cur[k])) cur[k] = {};
     cur = cur[k];
-  }
-  cur[keys.at(-1)!] = value;
-  return next;
+    //console.log("cur in loop", i , ": ", cur);
+
+  }  
+  cur[keys.at(-1)!] = newValue;
+  //console.log("Before Exit: ", shallowEqual(prevForm, nextForm), nextForm);
+  return nextForm;
 }
 
 function shallowEqual(a: any, b: any) {
@@ -249,7 +277,7 @@ function AskRag() {
     <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
       <div className="flex p-3 border-2 rounded-md text-md">
         <h1 className="">
-          das ist ja was im ganzen
+          test
         </h1>
       </div>
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
@@ -327,47 +355,51 @@ export default function Page() {
 
   useEffect(() => {
     if (data?.data && Object.keys(form).length === 0) {
-    //if (data?.data){
       setForm(data.data);
     }
-  // dependency Array -> effect reruns whenerver ANY value in the dependeny array changes
-  //}, [data, form]);
   }, [data]);
-
-  /*
-  function onChange(path: string, value: any) {
-    setForm((prev) => setAt(prev, path, value));
-  }
-  */
 
   async function reload() {
     await mutate();
   }
 
-  // helper function: clean/ built Payload for section (pruned + normalize)
-  function buildSectionPayload(sectionKey: string) {
-    const sectionVal = form?.[sectionKey];
-    const cleaned = pruneEmpty(structuredClone(sectionVal)) ?? {};
-    console.log("\n\nCleaned\n\n");
-    console.log(cleaned)
-    const normalized = pruneEmpty(structuredClone({[sectionKey]: cleaned}));
-    console.log("\n\nNormalized\n\n");
-    console.log(normalized);
-    return normalized && normalized[sectionKey] ? normalized : {};
+  function buildSectionPayload(sectionKey: string){   
+    const newSection = {[sectionKey] : structuredClone(form[sectionKey])};
+    return newSection;
   }
- 
+
+  function emptyValue(sectionKey : string){
+    const section = structuredClone(form[sectionKey]);
+    console.log(section);
+    for (const [key, value] of Object.entries(section)){
+      console.log(`key: ${key}, value: ${value}`);
+      if (value === "" || value === undefined){
+        alert(`Please leave no field empty before saving. You missed ${key}`);
+        return true;
+      }
+    }
+    return false;
+  }
+
   // SAVE: only selected section → MERGE
   async function saveSection(sectionKey: string) {
     // setSaving: React useState hook, sets variable string saving (sectionKey) 
     setSaving(sectionKey);
     try {
-      // get cleaned section or key = {} object contains no properties
       const sectionPayload = buildSectionPayload(sectionKey);
+      if (emptyValue(sectionKey)){
+        setSaving(null);
+        console.log("no, we can't save that");
+        return;
+      }
+      console.log("seems like we gonna try to save that");
+      /*
       if (Object.keys(sectionPayload).length === 0) {
         // nothing to store, avoid empty objects
         setSaving(null);
         return;
       }
+        */
       const res = await fetch("/api/config?mode=merge", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -384,6 +416,11 @@ export default function Page() {
     } finally {
       setSaving(null);
     }
+  }
+
+  function showForm(){
+    console.log("form: ", Object.keys(form));
+    console.log("data: ", data);
   }
 
   // SAVE: complete tree → REPLACE, TODO: replace saveAllReplace as if a value field is empty the property gets deleted
@@ -430,9 +467,12 @@ export default function Page() {
   }
 
   function onFieldChange(sectionKey: string, fieldPath: string, nextValue: any) {
+    showForm();
     const absolutePath = `${sectionKey}.${fieldPath}`;
+    // prev: mutated data.data
     setForm((prev) => setAt(prev, absolutePath, nextValue));
   }
+
 
   if (isLoading) {
     return (
@@ -445,9 +485,14 @@ export default function Page() {
     );
   }
 
-  const filePath = data?.path ?? "";
+  //const filePath = data?.path ?? "";
   const allKeys = Object.keys(form || {});
+
+  // console.log(`All keys: ${allKeys}`);
+
+  // here we can define an order how the UI elements should be listet
   const preferred = ["llm", "prompt", "retriever", "retrieval"];
+  // first add elements to ordered that are in preferred, then those that are not in preferred
   const ordered = [...preferred.filter((k) => allKeys.includes(k)), ...allKeys.filter((k) => !preferred.includes(k))];
 
   return (
@@ -488,7 +533,7 @@ export default function Page() {
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-8">
         <AskRag />
 
-        {ordered.map((sectionKey) => {
+        {ordered.map((sectionKey) => {          
           const sectionVal = form?.[sectionKey];
           const rows = flattenSection(sectionKey, sectionVal);
           const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);
@@ -526,12 +571,13 @@ export default function Page() {
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                   {rows.map(({ path, value }) => (
                     <Row
+                      // the key value is for react
                       key={`${sectionKey}:${path}`}
                       label={`${sectionKey}.${path}`}
                       value={value}
                       fieldType={guessType(`${sectionKey}.${path}`, value)}
                       enumValues={ENUMS[`${sectionKey}.${path}`]}
-                      onChange={(nv) => onFieldChange(sectionKey, path, nv)}
+                      onChange={(prev) => onFieldChange(sectionKey, path, prev)}
                     />
                   ))}
                 </div>
