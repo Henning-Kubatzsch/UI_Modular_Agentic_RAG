@@ -14,20 +14,6 @@ const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui
 
 // -------------------- Utils --------------------@
 
-function setAt2(prevForm: AnyObj, path: string, newValue: any){
-
-  const nextForm = structuredClone(prevForm);
-
-  // TODO: take nextForm and update path with newValue
-
-  console.log("incide setAt()");
-  console.log(JSON.parse(JSON.stringify(nextForm)));
-
-  nextForm.path = newValue;
-  return nextForm;
-}
-
-
 function setAt(prevForm: AnyObj, path: string, newValue: any) {
 
   const keys = path.split(".");
@@ -277,16 +263,12 @@ function AskRag() {
     <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
       <div className="flex p-3 border-2 rounded-md text-md">
         <h1 className="">
-          test
+          First Aid Instructor
         </h1>
       </div>
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
         <h2 className="text-lg font-semibold">Ask the model (RAG)</h2>     
         <div className="flex items-center gap-2">
-          <button className="items-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
-          >
-            Try Shit  
-          </button>
           {!loading ? (
             <button
               onClick={ask}
