@@ -18,29 +18,18 @@ function setAt(prevForm: AnyObj, path: string, newValue: any) {
 
   const keys = path.split(".");
 
-  /*
-  console.log("keys: ", keys);
-  console.log("value: ", newValue);
-  console.log("prev: ", prevForm);
-  */
-
   const nextForm = structuredClone(prevForm ?? {});
 
-  //console.log("Entering: ", shallowEqual(prevForm, nextForm), JSON.parse(JSON.stringify(nextForm)));
   let cur: any = nextForm;
 
-  //console.log("cur before loop: ", cur);
 
   for (let i = 0; i < keys.length - 1; i++) {
-    //console.log("key length: ", keys.length);
     const k = keys[i];    
     if (cur[k] == null || typeof cur[k] !== "object" || Array.isArray(cur[k])) cur[k] = {};
     cur = cur[k];
-    //console.log("cur in loop", i , ": ", cur);
 
   }  
   cur[keys.at(-1)!] = newValue;
-  //console.log("Before Exit: ", shallowEqual(prevForm, nextForm), nextForm);
   return nextForm;
 }
 
@@ -333,28 +322,87 @@ export default function Page() {
   const [form, setForm] = useState<AnyObj>({});
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
   const [savingAll, setSavingAll] = useState<boolean>(false);
+  const originalTypes = useRef<Record<string, string>>({});
 
 
   useEffect(() => {
     if (data?.data && Object.keys(form).length === 0) {
+      originalTypes.current = buildTypeMap(data.data);
+      console.log("condition for useEffect with buildTypeMap and set From is fullfilled.");
+      console.log("originalTypes.current in useEffect: ", originalTypes.current);
       setForm(data.data);
     }
   }, [data]);
+
 
   async function reload() {
     await mutate();
   }
 
-  function buildSectionPayload(sectionKey: string){   
-    const newSection = {[sectionKey] : structuredClone(form[sectionKey])};
-    return newSection;
+  // Hint: works perfectly fine
+  function buildTypeMap(obj: any, prefix = ""): Record<string, string> {
+    const types: Record<string, string> = {};
+   
+    for (const [key, value] of Object.entries(obj)) {
+      const path = prefix ? `${prefix}.${key}` : key;
+      
+      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+        // Recurse into nested objects
+        Object.assign(types, buildTypeMap(value, path));
+      } else {
+        // Store the type
+        types[path] = typeof value;
+      }
+    }    
+    return types;
   }
 
-  function emptyValue(sectionKey : string){
+  function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>) {
+
+    console.log(`in fixTypes sectionKey: ${sectionKey}`);
+
+    for (const [key, value] of Object.entries(obj)) {
+      const path = sectionKey ? `${sectionKey}.${key}` : key;
+      console.log(`path in fixTypes: ${path}`);
+      const expectedType = typeSchema[path];
+      console.log(`in fixTypes: key: ${key} -> value: ${value} -> expectedType: ${expectedType}`);
+
+      
+      if (!expectedType) continue;
+      
+      // If it's an object, recurse
+      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+        console.log()
+        fixTypes(value, path, typeSchema);
+        continue;
+      }
+      
+      // Fix the type
+      if (expectedType === "number" && typeof value === "string") {
+        const num = Number(value);
+        obj[key] = isNaN(num) ? null : num;
+      }
+      else if (expectedType === "boolean" && typeof value === "string") {
+        obj[key] = value === "true";
+      }
+    }
+  }
+
+  function buildSectionPayload(sectionKey: string){   
+    console.log("form: ", form);
+    console.log("section key: ", sectionKey);
+    let cloned = structuredClone(form[sectionKey]);
+    fixTypes(cloned, sectionKey, originalTypes.current);
+    console.log("originalTypes.current after fixTyper:", originalTypes.current);
+
+    //const newSection = {[sectionKey] : structuredClone(form[sectionKey])};
+    //return newSection;
+    return {[sectionKey]: cloned}
+  }
+
+  function emptyValue(sectionKey : string){    
     const section = structuredClone(form[sectionKey]);
-    console.log(section);
     for (const [key, value] of Object.entries(section)){
-      console.log(`key: ${key}, value: ${value}`);
       if (value === "" || value === undefined){
         alert(`Please leave no field empty before saving. You missed ${key}`);
         return true;
@@ -366,15 +414,17 @@ export default function Page() {
   // SAVE: only selected section → MERGE
   async function saveSection(sectionKey: string) {
     // setSaving: React useState hook, sets variable string saving (sectionKey) 
+
+    console.log("originlaTypes.current in saveSection() 1: ", originalTypes.current);
+
     setSaving(sectionKey);
     try {
       const sectionPayload = buildSectionPayload(sectionKey);
+      console.log("sectionPayload after buildSectionPayload: ", sectionPayload);
       if (emptyValue(sectionKey)){
         setSaving(null);
-        console.log("no, we can't save that");
         return;
       }
-      console.log("seems like we gonna try to save that");
       /*
       if (Object.keys(sectionPayload).length === 0) {
         // nothing to store, avoid empty objects
@@ -400,18 +450,11 @@ export default function Page() {
     }
   }
 
-  function showForm(){
-    console.log("form: ", Object.keys(form));
-    console.log("data: ", data);
-  }
+
 
   // SAVE: complete tree → REPLACE, TODO: replace saveAllReplace as if a value field is empty the property gets deleted
   async function saveAllReplace() {
     setSavingAll(true);
-    console.log("\n\n");
-    console.log("Form:\n\n")
-    console.log(form);
-    console.log("\n\n");
     try {
       // check if there are empty fields, if so: notify the user
       for (const sectionKey in form){
@@ -426,7 +469,11 @@ export default function Page() {
           }
         }
       }      
-      const cleaned = pruneEmpty(structuredClone(form)) ?? {};
+      const cloned = structuredClone(form);
+      fixTypes(cloned, "", originalTypes.current);
+
+      //const cleaned = pruneEmpty(structuredClone(form)) ?? {};
+      const cleaned = pruneEmpty(cloned);
       if (!cleaned || Object.keys(cleaned).length === 0) {
         setSavingAll(false);
         return;
@@ -449,7 +496,7 @@ export default function Page() {
   }
 
   function onFieldChange(sectionKey: string, fieldPath: string, nextValue: any) {
-    showForm();
+    //showForm();
     const absolutePath = `${sectionKey}.${fieldPath}`;
     // prev: mutated data.data
     setForm((prev) => setAt(prev, absolutePath, nextValue));
@@ -467,10 +514,9 @@ export default function Page() {
     );
   }
 
-  //const filePath = data?.path ?? "";
   const allKeys = Object.keys(form || {});
 
-  // console.log(`All keys: ${allKeys}`);
+  const obj = form.llm;
 
   // here we can define an order how the UI elements should be listet
   const preferred = ["llm", "prompt", "retriever", "retrieval"];
@@ -515,7 +561,7 @@ export default function Page() {
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-8">
         <AskRag />
 
-        {ordered.map((sectionKey) => {          
+        {ordered.map((sectionKey) => {      
           const sectionVal = form?.[sectionKey];
           const rows = flattenSection(sectionKey, sectionVal);
           const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);

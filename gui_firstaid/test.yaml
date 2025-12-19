@@ -1,15 +1,15 @@
 llm:
   model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf
-  family: llama3
-  n_ctx: 2048
-  n_gpu_layers: "3"
+  family: qwen2
+  n_ctx: 3
+  n_gpu_layers: "5"
   n_threads: 8
-  n_batch: 24
+  n_batch: 12
   seed: 42
-  temperature: "3"
+  temperature: 3
   top_p: 0.9
   repeat_penalty: 1.3
-  max_tokens: 512
+  max_tokens: 4
   use_mmap: false
   use_mlock: false
 prompt:
