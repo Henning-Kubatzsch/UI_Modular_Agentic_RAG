@@ -328,8 +328,8 @@ export default function Page() {
   useEffect(() => {
     if (data?.data && Object.keys(form).length === 0) {
       originalTypes.current = buildTypeMap(data.data);
-      console.log("condition for useEffect with buildTypeMap and set From is fullfilled.");
-      console.log("originalTypes.current in useEffect: ", originalTypes.current);
+      //console.log("condition for useEffect with buildTypeMap and set From is fullfilled.");
+      //console.log("originalTypes.current in useEffect: ", originalTypes.current);
       setForm(data.data);
     }
   }, [data]);
@@ -359,20 +359,19 @@ export default function Page() {
 
   function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>) {
 
-    console.log(`in fixTypes sectionKey: ${sectionKey}`);
+    // console.log(`in fixTypes sectionKey: ${sectionKey}`);
 
     for (const [key, value] of Object.entries(obj)) {
       const path = sectionKey ? `${sectionKey}.${key}` : key;
-      console.log(`path in fixTypes: ${path}`);
+      //console.log(`path in fixTypes: ${path}`);
       const expectedType = typeSchema[path];
-      console.log(`in fixTypes: key: ${key} -> value: ${value} -> expectedType: ${expectedType}`);
-
+      //console.log(`in fixTypes: key: ${key} -> value: ${value} -> expectedType: ${expectedType}`);
       
-      if (!expectedType) continue;
+      //if (!expectedType) continue;
       
       // If it's an object, recurse
       if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        console.log()
+        //console.log("we aren in: if (value !== null && typeof value === object && !Array.isArray(value)");
         fixTypes(value, path, typeSchema);
         continue;
       }
