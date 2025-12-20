@@ -327,9 +327,10 @@ export default function Page() {
 
   useEffect(() => {
     if (data?.data && Object.keys(form).length === 0) {
+      console.log("####################################");
       originalTypes.current = buildTypeMap(data.data);
       //console.log("condition for useEffect with buildTypeMap and set From is fullfilled.");
-      //console.log("originalTypes.current in useEffect: ", originalTypes.current);
+      console.log("originalTypes.current in useEffect: ", originalTypes.current);
       setForm(data.data);
     }
   }, [data]);
@@ -351,11 +352,20 @@ export default function Page() {
         Object.assign(types, buildTypeMap(value, path));
       } else {
         // Store the type
-        types[path] = typeof value;
+        if(typeof value == 'number'){
+          if (Number.isInteger(value)){
+            types[path] = 'int';
+          }else{
+            types[path] = 'float';
+          }
+        }else{
+          types[path] = typeof value;
+        }
       }
     }    
     return types;
   }
+
 
   function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>) {
 
@@ -377,13 +387,38 @@ export default function Page() {
       }
       
       // Fix the type
+      /*
       if (expectedType === "number" && typeof value === "string") {
         const num = Number(value);
         obj[key] = isNaN(num) ? null : num;
       }
-      else if (expectedType === "boolean" && typeof value === "string") {
-        obj[key] = value === "true";
+      */
+
+      if(expectedType === 'int' || expectedType === 'float'){
+        let num = value;
+        if(typeof num === 'string'){
+          num = parseFloat(num);
+        }
+        if(typeof num === 'number' && expectedType === 'int'){
+          num = Math.floor(num);
+        }
+        obj[key] = num;
       }
+      /*
+      if(expectedType == 'int' && typeof value === "string"){
+        console.log("we are in int + string");
+        const num = parseInt(value);
+        obj[key] = isNaN(num) ? null : num;
+      }
+      if(expectedType === "float" && typeof value === "string"){
+        console.log("we are in float + string");
+        const num = parseFloat(value);
+        obj[key] = isNaN(num) ? null : num;
+      }
+      */
+      if (expectedType === "boolean" && typeof value === "string") {
+        obj[key] = value === "true";
+      }      
     }
   }
 
