@@ -327,10 +327,7 @@ export default function Page() {
 
   useEffect(() => {
     if (data?.data && Object.keys(form).length === 0) {
-      console.log("####################################");
       originalTypes.current = buildTypeMap(data.data);
-      //console.log("condition for useEffect with buildTypeMap and set From is fullfilled.");
-      console.log("originalTypes.current in useEffect: ", originalTypes.current);
       setForm(data.data);
     }
   }, [data]);
@@ -375,47 +372,21 @@ export default function Page() {
       const path = sectionKey ? `${sectionKey}.${key}` : key;
       //console.log(`path in fixTypes: ${path}`);
       const expectedType = typeSchema[path];
-      //console.log(`in fixTypes: key: ${key} -> value: ${value} -> expectedType: ${expectedType}`);
-      
-      //if (!expectedType) continue;
-      
-      // If it's an object, recurse
+   
       if (value !== null && typeof value === "object" && !Array.isArray(value)) {
         //console.log("we aren in: if (value !== null && typeof value === object && !Array.isArray(value)");
         fixTypes(value, path, typeSchema);
         continue;
       }
-      
-      // Fix the type
-      /*
-      if (expectedType === "number" && typeof value === "string") {
-        const num = Number(value);
-        obj[key] = isNaN(num) ? null : num;
-      }
-      */
 
       if(expectedType === 'int' || expectedType === 'float'){
-        let num = value;
-        if(typeof num === 'string'){
-          num = parseFloat(num);
+        const num = Number(value);       
+        if(isNaN(num)){
+          obj[key] = null;
+        } else {
+          obj[key] = expectedType === 'int' ? Math.floor(num) : num;
         }
-        if(typeof num === 'number' && expectedType === 'int'){
-          num = Math.floor(num);
-        }
-        obj[key] = num;
       }
-      /*
-      if(expectedType == 'int' && typeof value === "string"){
-        console.log("we are in int + string");
-        const num = parseInt(value);
-        obj[key] = isNaN(num) ? null : num;
-      }
-      if(expectedType === "float" && typeof value === "string"){
-        console.log("we are in float + string");
-        const num = parseFloat(value);
-        obj[key] = isNaN(num) ? null : num;
-      }
-      */
       if (expectedType === "boolean" && typeof value === "string") {
         obj[key] = value === "true";
       }      
@@ -423,14 +394,9 @@ export default function Page() {
   }
 
   function buildSectionPayload(sectionKey: string){   
-    console.log("form: ", form);
-    console.log("section key: ", sectionKey);
+
     let cloned = structuredClone(form[sectionKey]);
     fixTypes(cloned, sectionKey, originalTypes.current);
-    console.log("originalTypes.current after fixTyper:", originalTypes.current);
-
-    //const newSection = {[sectionKey] : structuredClone(form[sectionKey])};
-    //return newSection;
     return {[sectionKey]: cloned}
   }
 
@@ -458,14 +424,7 @@ export default function Page() {
       if (emptyValue(sectionKey)){
         setSaving(null);
         return;
-      }
-      /*
-      if (Object.keys(sectionPayload).length === 0) {
-        // nothing to store, avoid empty objects
-        setSaving(null);
-        return;
-      }
-        */
+      } 
       const res = await fetch("/api/config?mode=merge", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -477,6 +436,9 @@ export default function Page() {
         throw new Error(j?.error ? JSON.stringify(j.error) : res.statusText);
       }
       await mutate();
+      if(data?.data){
+        setForm(data.data);
+      }
     } catch (e: any) {
       alert("Error while saving: " + e.message);
     } finally {
@@ -522,6 +484,9 @@ export default function Page() {
         throw new Error(j?.error ? JSON.stringify(j.error) : res.statusText);
       }
       await mutate();
+      if(data?.data){
+              setForm(data.data);
+      }
     } catch (e: any) {
       alert("Fehler beim Speichern (vollständig): " + e.message);
     } finally {
@@ -530,9 +495,7 @@ export default function Page() {
   }
 
   function onFieldChange(sectionKey: string, fieldPath: string, nextValue: any) {
-    //showForm();
     const absolutePath = `${sectionKey}.${fieldPath}`;
-    // prev: mutated data.data
     setForm((prev) => setAt(prev, absolutePath, nextValue));
   }
 
