@@ -330,12 +330,10 @@ export default function Page() {
       originalTypes.current = buildTypeMap(data.data);
       setForm(data.data);
     }
-    /*
     if (data?.data && !(Object.keys(form).length === 0)) {
       originalTypes.current = buildTypeMap(data.data);
       setForm(data.data);
     }
-    */
   }, [data]);
 
 
@@ -442,9 +440,6 @@ export default function Page() {
         throw new Error(j?.error ? JSON.stringify(j.error) : res.statusText);
       }
       await mutate();
-      if(data?.data){
-        setForm(data.data);
-      }
     } catch (e: any) {
       alert("Error while saving: " + e.message);
     } finally {
@@ -490,9 +485,6 @@ export default function Page() {
         throw new Error(j?.error ? JSON.stringify(j.error) : res.statusText);
       }
       await mutate();
-      if(data?.data){
-        setForm(data.data);
-      }
     } catch (e: any) {
       alert("Fehler beim Speichern (vollständig): " + e.message);
     } finally {

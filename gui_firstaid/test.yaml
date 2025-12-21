@@ -1,7 +1,7 @@
 llm:
   model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf
   family: qwen
-  n_ctx: 2053
+  n_ctx: 238
   n_gpu_layers: -1
   n_threads: 8
   n_batch: 256
