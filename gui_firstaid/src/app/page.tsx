@@ -330,6 +330,12 @@ export default function Page() {
       originalTypes.current = buildTypeMap(data.data);
       setForm(data.data);
     }
+    /*
+    if (data?.data && !(Object.keys(form).length === 0)) {
+      originalTypes.current = buildTypeMap(data.data);
+      setForm(data.data);
+    }
+    */
   }, [data]);
 
 
@@ -485,7 +491,7 @@ export default function Page() {
       }
       await mutate();
       if(data?.data){
-              setForm(data.data);
+        setForm(data.data);
       }
     } catch (e: any) {
       alert("Fehler beim Speichern (vollständig): " + e.message);
@@ -593,7 +599,8 @@ export default function Page() {
               </div>
 
               <div className="px-5 py-4">
-                <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                {/*Adjust collumn cont here*/}
+                <div className="grid gap-3 lg:grid-cols-4">
                   {rows.map(({ path, value }) => (
                     <Row
                       // the key value is for react
@@ -630,7 +637,7 @@ function Row({
   onChange: (v: any) => void;
 }) {
   return (
-    <div className="grid grid-cols-[200px,1fr] items-center gap-3 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2">
+    <div className="grid grid-cols-2 items-center gap-3 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2">
       <div className="text-sm text-foreground truncate whitespace-nowrap" title={label}>
         <span className="font-mono">{label}</span>
       </div>
