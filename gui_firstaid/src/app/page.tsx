@@ -250,18 +250,13 @@ function AskRag() {
   return (
     //<section className="rounded-xl border border-[#3b82f6]/30 bg-white/[0.13]">
     <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
-      <div className="flex p-3 border-2 rounded-md text-md">
-        <h1 className="">
-          First Aid Instructor
-        </h1>
-      </div>
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
         <h2 className="text-lg font-semibold">Ask the model (RAG)</h2>     
         <div className="flex items-center gap-2">
           {!loading ? (
             <button
               onClick={ask}
-              className="rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+              className="rounded-md bg-[var(--button_standard)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
               disabled={!q.trim()}
             >
               ▶ Run
@@ -542,7 +537,7 @@ export default function Page() {
             </button>
             <button
               onClick={saveAllReplace}
-              className="inline-flex items-center gap-2 rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-foreground hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-60"
+              className="inline-flex items-center gap-2 rounded-md bg-[var(--button_top)] px-3 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_top_hover)] focus:outline-none focus:ring-2 focus:ring-emerald-500/40 disabled:opacity-60"
               disabled={savingAll}
               title="Schreibt den gesamten Formularzustand (Replace)"
             >
@@ -581,7 +576,7 @@ export default function Page() {
                   <button
                     onClick={() => saveSection(sectionKey)}
                     disabled={saving === sectionKey || savingAll}
-                    className="inline-flex items-center gap-2 rounded-md bg-sky-500 px-4 py-2 text-sm font-medium text-foreground hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+                    className="inline-flex items-center gap-2 rounded-md bg-[var(--button_standard)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
                     title="Speichert nur diese Section (Merge)"
                   >
                     {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}

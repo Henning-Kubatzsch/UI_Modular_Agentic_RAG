@@ -1,14 +1,19 @@
 @import "tailwindcss";
 
 :root {
-  --background: #9c4545;  /* Beispiel: Dark */
-  --foreground: #ffffff;
+  --background: #181818;  /* Beispiel: Dark */
+  --foreground: #fdfdfd;
+  --button_top: #db7ed996;
+  --button_top_hover: #db7ed9bb;
+  --button_standard: #d18a78cf;
+  --button_standard_hover: #d79483dd;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
     --background: #784242;
     --foreground: #ffffff;
+
   }
 }
 
