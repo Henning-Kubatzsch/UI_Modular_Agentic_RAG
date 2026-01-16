@@ -1,2 +1,3 @@
-# GUI_forFirstAid
-manipulate hyper parameters in FirstAid yaml via GUI using Node/Raeact
+# UI_Modular_Agentic_RAG
+
+manipulate hyper parameters in Modular Agentig RAG yaml via GUI using Node/Raeact
