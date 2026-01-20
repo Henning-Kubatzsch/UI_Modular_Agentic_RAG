@@ -587,13 +587,13 @@ export default function Page() {
               </div>
 
               <div className="px-5 py-4">
-                {/*Adjust collumn cont here*/}
-                <div className="grid gap-3 lg:grid-cols-4">
+                {/*Adjust collumn count here*/}
+                <div className="grid gap-2 lg:grid-cols-4">
                   {rows.map(({ path, value }) => (
                     <Row
                       // the key value is for react
                       key={`${sectionKey}:${path}`}
-                      label={`${sectionKey}.${path}`}
+                      label={`${path}`}
                       value={value}
                       fieldType={guessType(`${sectionKey}.${path}`, value)}
                       enumValues={ENUMS[`${sectionKey}.${path}`]}
