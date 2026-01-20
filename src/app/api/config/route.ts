@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import fs from "fs/promises";
 import { parse, stringify } from "yaml";
 
-const FILE = process.env.CONFIG_PATH || "FIRST_AID_PROJECT/configs/rag.yaml";
+const FILE = process.env.CONFIG_PATH || "AGENTIC_RAG_CONFIG/configs/rag.yaml";
 
 function isObj(x: any) { return x && typeof x === "object" && !Array.isArray(x); }
 function deepMerge(a: any, b: any) {
   if (!isObj(a) || !isObj(b)) return b;
   const out: any = { ...a };
-  for (const k of Object.keys(b)) out[k] = deepMerge(a[k], b[k]);
+  for (const k of Object.keys(b)) out[k] = deepMerge(a[k], b[k]); 
   return out;
 }
 
