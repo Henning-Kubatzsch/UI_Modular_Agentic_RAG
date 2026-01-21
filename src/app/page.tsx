@@ -16,18 +16,17 @@ const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui
 
 // TODO find a cleaner way thwrite this method, we just set new vlue at path
 function setAt(prevForm: AnyObj, path: string, newValue: any) {
+
   const keys = path.split(".");
-  const nextForm = structuredClone(prevForm ?? {});
-  let cur: any = nextForm;
-  
-  for (let i = 0; i < keys.length - 1; i++) {
-    const k = keys[i];    
-    if (cur[k] == null || typeof cur[k] !== "object" || Array.isArray(cur[k])) cur[k] = {};
-    cur = cur[k];
-  }  
-  
-  cur[keys.at(-1)!] = newValue;
-  return nextForm;
+  const newForm = structuredClone(prevForm ?? {});
+  let current = newForm;
+ 
+  for (const key of keys.slice(0, -1)){
+    current[key] ??= {};
+    current = current[key]
+  }
+  current[keys.at(-1)!] = newValue; 
+  return newForm;
 }
 
 function shallowEqual(a: any, b: any) {
@@ -553,7 +552,7 @@ export default function Page() {
 
         {ordered.map((sectionKey) => {      
           const sectionVal = form?.[sectionKey];
-          console.log(`sectionVal: ${Object.keys(sectionVal)}`);
+          //console.log(`sectionVal: ${Object.keys(sectionVal)}`);
           const rows = flattenSection(sectionKey, sectionVal);
           const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);
 
