@@ -106,7 +106,7 @@ function AskRag() {
   }, []);
 
   // only executed at first render as the dependeny Array is empty [], but the method body at this moment is empty
-  // also called at unmount, all useEffect methods have an cleanup function -> when unmount all AvortController get aborted
+  // also called at unmount, all useEffect methods have an cleanup function -> when unmount all AbortController get aborted
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
@@ -316,16 +316,27 @@ export default function Page() {
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
   const [savingAll, setSavingAll] = useState<boolean>(false);
   const originalTypes = useRef<Record<string, string>>({});
+  const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
 
 
-  
+        
   useEffect(() => {
+    if(data?.data && Object.keys(expandedSection).length == 0){
+      const initialExpanded : Record<string, boolean> = {};
+      for (const key in data.data){
+        initialExpanded[key] = false;
+      }
+      setExpandedSection(initialExpanded);
+    }
     if (data?.data && Object.keys(form).length === 0) {
       originalTypes.current = buildTypeMap(data.data);
       setForm(data.data);
     }
     else if (data?.data){
       setForm(data.data);
+    }
+    for(const [key, value] of Object.entries(expandedSection)){
+      console.log(`key: ${key} ... value: ${value}`);
     }
   }, [data]);
   
@@ -556,6 +567,11 @@ export default function Page() {
           const rows = flattenSection(sectionKey, sectionVal);
           const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);
 
+          
+          const ToggleSection = (sectionKey: string) => {
+            
+          }
+
           return (
             <section key={sectionKey} className="rounded-xl border border-white/10 bg-white/[0.03] shadow-sm">
               <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
@@ -582,6 +598,7 @@ export default function Page() {
                     {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
                     Speichern
                   </button>
+                  
                 </div>
               </div>
 
