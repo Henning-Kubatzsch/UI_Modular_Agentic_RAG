@@ -14,21 +14,18 @@ const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui
 
 // -------------------- Utils --------------------@
 
+// TODO find a cleaner way thwrite this method, we just set new vlue at path
 function setAt(prevForm: AnyObj, path: string, newValue: any) {
-
   const keys = path.split(".");
-
   const nextForm = structuredClone(prevForm ?? {});
-
   let cur: any = nextForm;
-
-
+  
   for (let i = 0; i < keys.length - 1; i++) {
     const k = keys[i];    
     if (cur[k] == null || typeof cur[k] !== "object" || Array.isArray(cur[k])) cur[k] = {};
     cur = cur[k];
-
   }  
+  
   cur[keys.at(-1)!] = newValue;
   return nextForm;
 }
@@ -47,12 +44,14 @@ const ENUMS: Record<string, string[]> = {
   "prompt.language": ["en", "de"],
   "prompt.style": ["qa", "steps"],
 };
+
 const BOOL_HINT = new Set<string>([
   "llm.use_mmap",
   "llm.use_mlock",
   "prompt.cite",
   "prompt.require_citations",
 ]);
+
 
 function flattenSection(sectionKey: string, sectionVal: any): { path: string; value: any }[] {
   const out: { path: string; value: any }[] = [];
@@ -320,17 +319,17 @@ export default function Page() {
   const originalTypes = useRef<Record<string, string>>({});
 
 
+  
   useEffect(() => {
     if (data?.data && Object.keys(form).length === 0) {
       originalTypes.current = buildTypeMap(data.data);
       setForm(data.data);
     }
-    if (data?.data && !(Object.keys(form).length === 0)) {
-      originalTypes.current = buildTypeMap(data.data);
+    else if (data?.data){
       setForm(data.data);
     }
   }, [data]);
-
+  
 
   async function reload() {
     await mutate();
@@ -414,7 +413,7 @@ export default function Page() {
   async function saveSection(sectionKey: string) {
     // setSaving: React useState hook, sets variable string saving (sectionKey) 
 
-    console.log("originlaTypes.current in saveSection() 1: ", originalTypes.current);
+    //console.log("originlaTypes.current in saveSection() 1: ", originalTypes.current);
 
     setSaving(sectionKey);
     try {
@@ -554,6 +553,7 @@ export default function Page() {
 
         {ordered.map((sectionKey) => {      
           const sectionVal = form?.[sectionKey];
+          console.log(`sectionVal: ${Object.keys(sectionVal)}`);
           const rows = flattenSection(sectionKey, sectionVal);
           const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);
 
