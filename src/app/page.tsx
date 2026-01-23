@@ -324,7 +324,7 @@ export default function Page() {
     if(data?.data && Object.keys(expandedSection).length == 0){
       const initialExpanded : Record<string, boolean> = {};
       for (const key in data.data){
-        initialExpanded[key] = false;
+        initialExpanded[key] = true;
       }
       setExpandedSection(initialExpanded);
     }
@@ -339,6 +339,10 @@ export default function Page() {
       console.log(`key: ${key} ... value: ${value}`);
     }
   }, [data]);
+
+  useEffect(() =>{
+    console.log("nice");
+  }, [expandedSection])
   
 
   async function reload() {
@@ -451,8 +455,6 @@ export default function Page() {
     }
   }
 
-
-
   // SAVE: complete tree → REPLACE, TODO: replace saveAllReplace as if a value field is empty the property gets deleted
   async function saveAllReplace() {
     setSavingAll(true);
@@ -498,7 +500,18 @@ export default function Page() {
 
   function onFieldChange(sectionKey: string, fieldPath: string, nextValue: any) {
     const absolutePath = `${sectionKey}.${fieldPath}`;
+    
     setForm((prev) => setAt(prev, absolutePath, nextValue));
+  }
+  
+  const ExpandSection = (sectionKey: string) => {
+    setExpandedSection(prev => {
+      const newState = {...prev};
+      newState[sectionKey] = !newState[sectionKey];
+      return newState;
+    }
+
+    )
   }
 
 
@@ -565,12 +578,8 @@ export default function Page() {
           const sectionVal = form?.[sectionKey];
           //console.log(`sectionVal: ${Object.keys(sectionVal)}`);
           const rows = flattenSection(sectionKey, sectionVal);
-          const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);
-
-          
-          const ToggleSection = (sectionKey: string) => {
-            
-          }
+          const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);          
+         
 
           return (
             <section key={sectionKey} className="rounded-xl border border-white/10 bg-white/[0.03] shadow-sm">
@@ -598,24 +607,37 @@ export default function Page() {
                     {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
                     Speichern
                   </button>
+                  <button
+                    onClick={() => ExpandSection(sectionKey)}
+                    className="inline-flex items-center gap-2 rounded-md bg-[var(--background)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+                    title="Toggel Expand Mode"
+                  >
+                    <span>{expandedSection[sectionKey] ? "▾" : "▸"}</span>
+                  </button>
                   
                 </div>
               </div>
 
-              <div className="px-5 py-4">
+              <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                expandedSection[sectionKey]
+                  ? "max-h-[2000px] opacity-100"
+                  : "max-h-0 opacity-0"
+              }`}>
+                <div className="px-5 py-4">
                 {/*Adjust collumn count here*/}
-                <div className="grid gap-2 lg:grid-cols-4">
-                  {rows.map(({ path, value }) => (
-                    <Row
-                      // the key value is for react
-                      key={`${sectionKey}:${path}`}
-                      label={`${path}`}
-                      value={value}
-                      fieldType={guessType(`${sectionKey}.${path}`, value)}
-                      enumValues={ENUMS[`${sectionKey}.${path}`]}
-                      onChange={(prev) => onFieldChange(sectionKey, path, prev)}
-                    />
-                  ))}
+                  <div className="grid gap-2 lg:grid-cols-4">
+                    {rows.map(({ path, value }) => (
+                      <Row
+                        // the key value is for react
+                        key={`${sectionKey}:${path}`}
+                        label={`${path}`}
+                        value={value}
+                        fieldType={guessType(`${sectionKey}.${path}`, value)}
+                        enumValues={ENUMS[`${sectionKey}.${path}`]}
+                        onChange={(prev) => onFieldChange(sectionKey, path, prev)}
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
             </section>
