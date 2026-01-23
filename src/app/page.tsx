@@ -625,7 +625,7 @@ export default function Page() {
               }`}>
                 <div className="px-5 py-4">
                 {/*Adjust collumn count here*/}
-                  <div className="grid gap-2 lg:grid-cols-4">
+                  <div className="grid gap-2 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2">
                     {rows.map(({ path, value }) => (
                       <Row
                         // the key value is for react
