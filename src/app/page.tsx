@@ -492,7 +492,7 @@ export default function Page() {
       }
       await mutate();
     } catch (e: any) {
-      alert("Fehler beim Speichern (vollständig): " + e.message);
+      alert("Error with saving (completly): " + e.message);
     } finally {
       setSavingAll(false);
     }
@@ -556,7 +556,7 @@ export default function Page() {
               onClick={reload}
               className="inline-flex items-center gap-2 rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm font-medium text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
             >
-              ⟳ Objekte & Werte neu laden
+              Reload objects & values
             </button>
             <button
               onClick={saveAllReplace}
@@ -565,7 +565,7 @@ export default function Page() {
               title="Schreibt den gesamten Formularzustand (Replace)"
             >
               {savingAll && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
-              Speichern (vollständig)
+              Save (completely)
             </button>
           </div>
         </div>
@@ -586,7 +586,7 @@ export default function Page() {
               <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-semibold">{sectionKey}</h2>
-                  {dirty && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-foreground">ungespeichert</span>}
+                  {dirty && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-foreground">unsaved</span>}
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -596,7 +596,7 @@ export default function Page() {
                     className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
                     disabled={saving === sectionKey || savingAll}
                   >
-                    Zurücksetzen
+                    Undo
                   </button>
                   <button
                     onClick={() => saveSection(sectionKey)}
@@ -605,7 +605,7 @@ export default function Page() {
                     title="Speichert nur diese Section (Merge)"
                   >
                     {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
-                    Speichern
+                    Save
                   </button>
                   <button
                     onClick={() => ExpandSection(sectionKey)}
