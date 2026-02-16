@@ -58,20 +58,24 @@ The application will now run by default on `http://localhost:3000`.
 
 ## 🛠️ Technology Stack
 
-- **Framework**: Next.js 15.5.5 (App Router)
-- **Frontend**: React 19.1.0 with TypeScript
-- **Data Fetching**: SWR
-- **Styling**: Tailwind CSS 4
-- **Configuration**: YAML parser (yaml), validation with Zod
-- **Linting**: ESLint with Next.js config
+- **Framework**: [Next.js](https://nextjs.org/) 15.5.5 (App Router)
+- **Frontend**: [React](https://react.dev/) 19.1.0 with [TypeScript](https://www.typescriptlang.org/) 5
+- **Data Fetching**: [SWR](https://swr.vercel.app/) 2.3.6 (Stale-While-Revalidate)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) 4.0 (Modern Engine)
+- **Schema Validation**: [Zod](https://zod.dev/) 4.1.12
+- **Configuration**: [YAML](https://eemeli.org/yaml/) 2.8.1 Parser
+- **Linting**: ESLint 9 with Next.js Core Web Vitals configuration
 
 ## 📄 License
 
-This is a private learning and portfolio project. All rights reserved.
+This is a **private learning and portfolio project**. All rights reserved.
 
 **Usage Restrictions:**
-- This code is provided for **viewing and evaluation purposes only** (e.g., for recruiters, potential employers, or educational review)
-- **No permission is granted** to copy, modify, distribute, or use this code in any commercial or non-commercial projects without explicit written consent
-- If you're interested in using parts of this project, please contact me directly
+- This source code is provided strictly for **viewing and evaluation purposes** (e.g., for recruiters, potential employers, or educational review).
+- **No permission is granted** to copy, modify, distribute, or use this code in any commercial or non-commercial projects without explicit written consent from the author.
+- Unauthorized duplication or redistribution of any part of this repository is strictly prohibited.
 
+If you are interested in using parts of this project or have questions regarding the implementation, please contact me directly.
+
+---
 © 2026 Henning Kubatzsch. All rights reserved.
