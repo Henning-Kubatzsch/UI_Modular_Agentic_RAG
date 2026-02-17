@@ -196,6 +196,7 @@ export default function AskRag() {
                 if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
               }}
               placeholder="Type your question…"
+              suppressHydrationWarning = {true}
               className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-1 focus:ring-sky-500/40"
             />
             <p className="mt-1 text-xs text-white/50">Press Ctrl/Cmd+Enter to run</p>
