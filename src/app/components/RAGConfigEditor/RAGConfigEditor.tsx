@@ -343,26 +343,30 @@ export default function RAGConfigEditor(){
                 <div className="flex items-center gap-3">
                   <h2 className="text-lg font-semibold">{sectionKey}</h2>
                   {dirty && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-foreground">unsaved</span>}
-                </div>
+                </div>                
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() =>
-                      setForm((prev) => setAt(prev, sectionKey, structuredClone(serverCfg?.[sectionKey])))
-                    }
-                    className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
-                    disabled={saving === sectionKey || savingAll}
-                  >
-                    Undo
-                  </button>
-                  <button
-                    onClick={() => saveSection(sectionKey)}
-                    disabled={saving === sectionKey || savingAll}
-                    className="inline-flex items-center gap-2 rounded-md bg-[var(--button_standard)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
-                    title="Speichert nur diese Section (Merge)"
-                  >
-                    {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
-                    Save
-                  </button>
+                {expandedSection[sectionKey] && (
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() =>
+                            setForm((prev) => setAt(prev, sectionKey, structuredClone(serverCfg?.[sectionKey])))
+                            }
+                            className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+                            disabled={saving === sectionKey || savingAll}
+                        >
+                            Undo                            
+                        </button>
+                        <button
+                            onClick={() => saveSection(sectionKey)}
+                            disabled={saving === sectionKey || savingAll}
+                            className="inline-flex items-center gap-2 rounded-md bg-[var(--button_standard)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+                            title="Speichert nur diese Section (Merge)"
+                        >
+                            {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
+                            Save
+                        </button>
+                    </div>
+                )}
                   <button
                     onClick={() => ExpandSection(sectionKey)}
                     className="inline-flex items-center gap-2 rounded-md bg-[var(--background)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
@@ -372,6 +376,7 @@ export default function RAGConfigEditor(){
                   </button>
                   
                 </div>
+                    
               </div>
 
               <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
