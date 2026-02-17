@@ -5,9 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navLinks = [
-  { name: "Dashboard", href: "/" },
-  { name: "Settings", href: "/settings" }, // Beispiel-Link
-  { name: "About", href: "/about" },       // Beispiel-Link
+  { name: "ph 1", href: "/" },
+  { name: "ph 2", href: "/settings" }, // Beispiel-Link
+  { name: "ph 3", href: "/about" },       // Beispiel-Link
 ];
 
 export default function Navbar() {

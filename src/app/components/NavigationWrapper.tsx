@@ -10,11 +10,11 @@ export default function NavigationWrapper({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-screen bg-black text-white">
       {/* Sidebar - Fixiert oder absolut je nach Screen-Größe */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(!isSidebarOpen)} />
 
       <div className="flex flex-1 flex-col transition-all duration-300">
         {/* Header - bekommt die Toggle-Funktion */}
-        <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+        <Header/>
         
         {/* Hauptinhalt */}
         <main className="flex-1 overflow-y-auto">
