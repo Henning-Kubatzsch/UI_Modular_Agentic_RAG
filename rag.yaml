@@ -1,13 +1,13 @@
 llm:
   model_path: models/qwen2.5-3b-instruct-q4_k_m.gguf
-  family: qwen2
-  n_ctx: 2000
+  family: qwen
+  n_ctx: 2048
   n_gpu_layers: -1
-  n_threads: "231"
-  n_batch: 13
-  seed: 14
-  temperature: 1
-  top_p: 0.9
+  n_threads: 8
+  n_batch: 256
+  seed: 42
+  temperature: 0.4
+  top_p: 1
   repeat_penalty: 1.1
   max_tokens: 512
   use_mmap: false
@@ -19,4 +19,4 @@ prompt:
   cite: false
   require_citations: false
 retriever:
-  k: 5
+  k: 3

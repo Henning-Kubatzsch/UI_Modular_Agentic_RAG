@@ -149,17 +149,14 @@ export default function RAGConfigEditor(){
   }
 
 
-  function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>) {
-
-    // console.log(`in fixTypes sectionKey: ${sectionKey}`);
+  function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>): any {
+    
 
     for (const [key, value] of Object.entries(obj)) {
       const path = sectionKey ? `${sectionKey}.${key}` : key;
-      //console.log(`path in fixTypes: ${path}`);
       const expectedType = typeSchema[path];
    
       if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        //console.log("we aren in: if (value !== null && typeof value === object && !Array.isArray(value)");
         fixTypes(value, path, typeSchema);
         continue;
       }
@@ -176,13 +173,17 @@ export default function RAGConfigEditor(){
         obj[key] = value === "true";
       }      
     }
+    const formCopy = structuredClone(form);
+    formCopy[sectionKey] = obj
+    setForm(formCopy)
+
+    return obj
   }
 
   function buildSectionPayload(sectionKey: string){   
 
-    let cloned = structuredClone(form[sectionKey]);
-    fixTypes(cloned, sectionKey, originalTypes.current);
-    return {[sectionKey]: cloned}
+    const cleaned = fixTypes(structuredClone(form[sectionKey]), sectionKey, originalTypes.current);
+    return {[sectionKey]: cleaned}
   }
 
   function emptyValue(sectionKey : string){    
@@ -245,11 +246,8 @@ export default function RAGConfigEditor(){
           }
         }
       }      
-      const cloned = structuredClone(form);
-      fixTypes(cloned, "", originalTypes.current);
+      const cleaned =fixTypes(structuredClone(form), "", originalTypes.current);
 
-      //const cleaned = pruneEmpty(structuredClone(form)) ?? {};
-      const cleaned = pruneEmpty(cloned);
       if (!cleaned || Object.keys(cleaned).length === 0) {
         setSavingAll(false);
         return;
