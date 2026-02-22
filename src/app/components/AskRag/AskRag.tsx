@@ -44,54 +44,6 @@ export default function AskRag() {
   }
 
   async function ask(){
-    console.log("we are in ask")
-    if (isChromeIOS){
-      console.log("we are using ChromeIOS")
-      await askChromeIOS();
-    }else{
-      console.log("we are using Standard")
-      await askStandard();
-    }
-  }
-
-  async function askChromeIOS() {
-      if (!q.trim()) return;
-      setAnswer("");
-      setLoading(true);
-      
-      try {
-        const res = await fetch(RAG_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ q }),
-          mode: "cors",
-          credentials: "omit",
-        });
-
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          throw new Error(text || res.statusText);
-        }
-
-        // ✅ Warte auf komplette Response (kein Streaming)
-        const text = await res.text();
-        
-        try {
-          const json = JSON.parse(text);
-          append(json?.answer ?? text);
-        } catch {
-          append(text);
-        }
-        
-      } catch (e: any) {
-        append((answer ? "\n\n" : "") + "Error: " + (e?.message ?? String(e)));
-      } finally {
-        setLoading(false);
-      }
-    }
-
-  async function askStandard() {
-    // if only q only consists of whitespaces: return
     if (!q.trim()) return;
     setAnswer("");
     setLoading(true);
