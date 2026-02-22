@@ -1,8 +1,8 @@
 "use client"
 
 import {useEffect, useMemo, useState, useRef} from "react"
-const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui";
-
+//const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui";
+const RAG_URL = "api/proxy_rag";
 
 export default function AskRag() {
   const [q, setQ] = useState<string>("");
@@ -44,9 +44,12 @@ export default function AskRag() {
   }
 
   async function ask(){
+    console.log("we are in ask")
     if (isChromeIOS){
+      console.log("we are using ChromeIOS")
       await askChromeIOS();
     }else{
+      console.log("we are using Standard")
       await askStandard();
     }
   }
