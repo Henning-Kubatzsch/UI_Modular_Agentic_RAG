@@ -7,14 +7,14 @@ llm:
   n_batch: 256
   seed: 42
   temperature: 0.4
-  top_p: 1
+  top_p: 0.9
   repeat_penalty: 1.1
   max_tokens: 512
   use_mmap: false
   use_mlock: false
 prompt:
-  language: en
-  style: steps
+  language: de
+  style: qa
   max_context_chars: 3000
   cite: false
   require_citations: false

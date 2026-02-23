@@ -4,6 +4,8 @@ import fs from "fs/promises";
 import { parse, stringify } from "yaml";
 
 const FILE = process.env.CONFIG_PATH || "AGENTIC_RAG_CONFIG/configs/rag.yaml";
+const BACKEND_URL = "http://127.0.0.1:8000/get_config";
+
 
 function isObj(x: any) { return x && typeof x === "object" && !Array.isArray(x); }
 function deepMerge(a: any, b: any) {
@@ -15,11 +17,28 @@ function deepMerge(a: any, b: any) {
 
 export async function GET() {
   try {
-    const text = await fs.readFile(FILE, "utf8").catch(() => "");
-    const data = text ? parse(text) : {};
-    return NextResponse.json({ path: FILE, data });
+    const res = await fetch
+    (BACKEND_URL, 
+      {
+        method:"GET",
+        cache: "no-store"
+      }
+    );
+    
+    if (!res.ok){
+      throw new Error(`Backend not responding with status ${res.status}`);
+    }
+    const configFromPython = await res.json();
+    console.log("we received config from backend");
+    return NextResponse.json({
+      source: "python-backend",
+      data: configFromPython
+    });
   } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 500 });
+    console.error("Error while loading from backend:", e);
+    return NextResponse.json(
+      { error: e.message }, 
+      { status: 500 });
   }
 }
 

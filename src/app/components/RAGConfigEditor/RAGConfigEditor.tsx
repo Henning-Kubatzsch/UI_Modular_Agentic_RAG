@@ -84,6 +84,7 @@ function safeParseJSONLoose(input: string): any {
 }
 
 export default function RAGConfigEditor(){
+  
     const { data, isLoading, mutate } = useSWR("/api/config", fetcher);
     const serverCfg = useMemo<AnyObj>(() => data?.data ?? {}, [data]);
     const [form, setForm] = useState<AnyObj>({});
