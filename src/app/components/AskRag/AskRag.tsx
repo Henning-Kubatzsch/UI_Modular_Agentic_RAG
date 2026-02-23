@@ -10,15 +10,6 @@ export default function AskRag() {
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const [isChromeIOS, setIsChromeIOS] = useState(false);
-
-  useEffect(() => {
-    setIsChromeIOS(/CriOS/.test(navigator.userAgent));
-    return() => abortRef.current?.abort();
-  }, []);
-
-  // only executed at first render as the dependeny Array is empty [], but the method body at this moment is empty
-  // also called at unmount, all useEffect methods have an cleanup function -> when unmount all AbortController get aborted
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
