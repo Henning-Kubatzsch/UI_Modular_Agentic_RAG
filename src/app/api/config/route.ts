@@ -18,59 +18,61 @@ function deepMerge(a: any, b: any) {
   return out;
 }
 
-export async function GET2() {
-  try {
-    const res = await fetch
-    (BACKEND_URL_1, 
-      {
-        method:"GET",
-        cache: "no-store"
-      }
-    );
+export async function GET(request: Request) {
+
+  const {searchParams} = new URL(request.url);
+  const type = searchParams.get("type");
+
+  if (type == "schema"){
+      try {
+        const res = await fetch
+        (BACKEND_URL_2, 
+          {
+            method:"GET",
+            cache: "no-store"
+          }
+        );
     
-    if (!res.ok){
-      throw new Error(`Backend not responding with status ${res.status}`);
-    }
-    const configFromPython = await res.json();
-
-    console.log("we received config from backend");
-
-    return NextResponse.json({
-      source: "python-backend",
-      data: configFromPython
-    });
-  } catch (e: any) {
-    console.error("Error while loading from backend:", e);
-    return NextResponse.json(
-      { error: e.message }, 
-      { status: 500 });
-  }
-}
-
-export async function GET() {
-  try {
-    const res = await fetch
-    (BACKEND_URL_1, 
-      {
-        method:"GET",
-        cache: "no-store"
+        if (!res.ok){
+          throw new Error(`Backend not responding with status ${res.status}`);
+        }
+        const configFromPython = await res.json();
+        console.log("we received schema from backend");
+        return NextResponse.json({
+          source: "python-backend",
+          data: configFromPython
+        });
+      } catch (e: any) {
+        console.error("Error while loading from backend:", e);
+        return NextResponse.json(
+          { error: e.message }, 
+          { status: 500 });
+      }    
+  }else{
+    try {
+      const res = await fetch
+      (BACKEND_URL_1, 
+        {
+          method:"GET",
+          cache: "no-store"
+        }
+      );
+      
+      if (!res.ok){
+        throw new Error(`Backend not responding with status ${res.status}`);
       }
-    );
-    
-    if (!res.ok){
-      throw new Error(`Backend not responding with status ${res.status}`);
+      const configFromPython = await res.json();
+      console.log("we received config from backend");
+      return NextResponse.json({
+        source: "python-backend",
+        data: configFromPython
+      });
+    } catch (e: any) {
+      console.error("Error while loading from backend:", e);
+      return NextResponse.json(
+        { error: e.message }, 
+        { status: 500 });
     }
-    const configFromPython = await res.json();
-    console.log("we received config from backend");
-    return NextResponse.json({
-      source: "python-backend",
-      data: configFromPython
-    });
-  } catch (e: any) {
-    console.error("Error while loading from backend:", e);
-    return NextResponse.json(
-      { error: e.message }, 
-      { status: 500 });
   }
 }
 
