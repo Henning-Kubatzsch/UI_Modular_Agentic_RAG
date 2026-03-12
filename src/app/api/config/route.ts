@@ -5,6 +5,7 @@ import { parse, stringify } from "yaml";
 
 const FILE = process.env.CONFIG_PATH || "AGENTIC_RAG_CONFIG/configs/rag.yaml";
 const BACKEND_URL_1 = "http://127.0.0.1:8000/get_config";
+const BACKEND_URL_2 = "http://127.0.0.1:8000/config";
 
 
 
