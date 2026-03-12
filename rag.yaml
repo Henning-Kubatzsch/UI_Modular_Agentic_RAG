@@ -3,7 +3,7 @@ llm:
   family: qwen
   n_ctx: 2048
   n_gpu_layers: -1
-  n_threads: 8
+  n_threads: 6
   n_batch: 256
   seed: 42
   temperature: 0.4
