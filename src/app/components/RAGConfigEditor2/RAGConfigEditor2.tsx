@@ -53,11 +53,15 @@ function shallowEqual(a: any, b: any) {
 }
 
 // Felder-Erkennung
+/*
 const ENUMS: Record<string, string[]> = {
   "llm.family": ["qwen", "qwen2", "llama3", "phi3", "mistral"],
   "prompt.language": ["en", "de"],
   "prompt.style": ["qa", "steps"],
 };
+*/
+
+const ENUMS: Record<string, string[]> = {};
 
 const BOOL_HINT = new Set<string>([
   "llm.use_mmap",
@@ -65,6 +69,8 @@ const BOOL_HINT = new Set<string>([
   "prompt.cite",
   "prompt.require_citations",
 ]);
+
+const BOOL_HINT2 = new Set<string>([])
 
 function guessType(fullPath: string, v: any): "select" | "number" | "boolean" | "text" | "multiline" {
   if (ENUMS[fullPath]) return "select";
@@ -95,68 +101,87 @@ export default function RAGConfigEditor(){
     const originalTypes = useRef<Record<string, string>>({});
     const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
 
+    useEffect(() => {
+        if(schemaData?.data && Object.keys(expandedSection).length == 0){
+            const initialExpanded : Record<string, boolean> = {}
+            for (const key in schemaData.data){
+                console.log(`key: ${key}`);
+                initialExpanded[key] = true;
+            }
+            setExpandedSection(initialExpanded)
+        }
+        if(schemaData?.data && ((Object.keys(ENUMS)).length == 0)){
+            createEnums(schemaData);
+        }
+    }, [schemaData])
         
-  useEffect(() => {
-    if (configData?.data && Object.keys(form).length === 0) {
-      originalTypes.current = buildTypeMap(configData.data);
-      setForm(configData.data);
-    }
-    else if (configData?.data){
-      setForm(configData.data);
-    }
-    for(const [key, value] of Object.entries(expandedSection)){
-      console.log(`key: ${key} ... value: ${value}`);
-    }
-  }, [configData]);
-
-
-  useEffect(() => {
-    if(schemaData?.data && Object.keys(expandedSection).length == 0){
-        const initialExpanded : Record<string, boolean> = {}
-        for (const key in schemaData.data){
-            console.log(`key: ${key}`);
-            initialExpanded[key] = true;
+    useEffect(() => {
+        if (configData?.data && Object.keys(form).length === 0) {
+            originalTypes.current = buildTypeMap(configData.data);
+            setForm(configData.data);
         }
-        setExpandedSection(initialExpanded)
-    }
-  }, [schemaData])
-
-  useEffect(() =>{
-    console.log("nice");
-  }, [expandedSection])
-
-  
-  
-
-  async function reload() {
-    await mutate();
-  }
-
-  // Hint: works perfectly fine
-  function buildTypeMap(obj: any, prefix = ""): Record<string, string> {
-    const types: Record<string, string> = {};
-   
-    for (const [key, value] of Object.entries(obj)) {
-      const path = prefix ? `${prefix}.${key}` : key;
-      
-      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        // Recurse into nested objects
-        Object.assign(types, buildTypeMap(value, path));
-      } else {
-        // Store the type
-        if(typeof value == 'number'){
-          if (Number.isInteger(value)){
-            types[path] = 'int';
-          }else{
-            types[path] = 'float';
-          }
-        }else{
-          types[path] = typeof value;
+        else if (configData?.data){
+            setForm(configData.data);
         }
-      }
-    }    
-    return types;
-  }
+        for(const [key, value] of Object.entries(expandedSection)){
+            console.log(`key: ${key} ... value: ${value}`);
+        }
+    }, [configData]);
+
+
+    useEffect(() =>{
+        console.log("nice");
+    }, [expandedSection])
+ 
+
+    async function reload() {
+        await mutate();
+    }
+
+    function createEnums(data:any){
+        for(const [groupName, groupContent] of Object.entries(data)){
+            const props = (groupContent as any).properties;
+            if (!props) continue;
+            for(const[fieldName, fieldDef] of Object.entries(props)){
+                const def = fieldDef as any;
+                if (def.enum){
+                    console.log("found enum");
+                    ENUMS[groupName + '.' + fieldName] = def.enum;
+                }
+            }
+        }
+    }
+
+
+
+    // Hint: works perfectly fine
+    function buildTypeMap(obj: any, prefix = ""): Record<string, string> {
+        const types: Record<string, string> = {};
+    
+        for (const [key, value] of Object.entries(obj)) {
+        const path = prefix ? `${prefix}.${key}` : key;
+        
+        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+            // Recurse into nested objects
+            Object.assign(types, buildTypeMap(value, path));
+        } else {
+            // Store the type
+            if(typeof value == 'number'){
+            if (Number.isInteger(value)){
+                types[path] = 'int';
+            }else{
+                types[path] = 'float';
+            }
+            }else{
+            types[path] = typeof value;
+            }
+        }
+        }  
+        
+        console.log(types)
+
+        return types;
+    }
 
 
   function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>): any {
