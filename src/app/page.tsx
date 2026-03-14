@@ -1,7 +1,7 @@
 "use client";
 
 import AskRag from './components/AskRag/AskRag';
-import RAGConfigEditor from './components/RAGConfigEditor/RAGConfigEditor'
+//import RAGConfigEditor from './components/RAGConfigEditor/RAGConfigEditor'
 import RAGConfigEditor2 from './components/RAGConfigEditor2/RAGConfigEditor2';
 
 
@@ -16,7 +16,6 @@ export default function Page() {
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-8">
         <RAGConfigEditor2 />
         <AskRag />
-        <RAGConfigEditor/>
       </main>
     </div>
   );

@@ -32,18 +32,11 @@ const data = {
         "type": "integer"
       },
       "n_threads": {
-        "anyOf": [
-          {
-            "minimum": 1,
-            "type": "integer"
-          },
-          {
-            "type": "null"
-          }
-        ],
-        "default": null,
+        "default": 6,
         "description": "CPU threads for llama.cpp. None = auto-detect",
-        "title": "N Threads"
+        "minimum": 1,
+        "title": "N Threads",
+        "type": "integer"
       },
       "seed": {
         "default": 42,
@@ -171,23 +164,11 @@ const data = {
 }
 
 
-for (const i in data){
-    console.log(i) 
-}
-
-// goal: llm.family, prompt.language, prompt.style
-const ENUMS: Record<string, string[]> = {}
-
-const ENUM: Record<string, string[]> = {}
-
-const lenE = Object.keys(ENUM).length
+const BOOL_HINT = new Set<String>([]);
+const ENUMS : Record<string, string[]> = {};
 
 
-
-data['llm']['properties']['model_path']['type']
-
-
-function createEnums(data:any){
+function createEnumsAndBools(data:any){
     for(const [groupName, groupContent] of Object.entries(data)){
         const props = (groupContent as any).properties;
         if (!props) continue;
@@ -197,10 +178,17 @@ function createEnums(data:any){
                 console.log("found enum");
                 ENUMS[groupName + '.' + fieldName] = def.enum;
             }
+            if (def.type){
+                if(def.type == "boolean"){
+                    console.log(def);
+                    BOOL_HINT.add(groupName + '.' + fieldName)
+                }   
+            }
         }
     }
 }
 
-createEnums(data)
+createEnumsAndBools(data)
 
 console.log(ENUMS)
+console.log(BOOL_HINT)

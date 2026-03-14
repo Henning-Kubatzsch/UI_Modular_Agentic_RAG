@@ -52,25 +52,8 @@ function shallowEqual(a: any, b: any) {
   }
 }
 
-// Felder-Erkennung
-/*
-const ENUMS: Record<string, string[]> = {
-  "llm.family": ["qwen", "qwen2", "llama3", "phi3", "mistral"],
-  "prompt.language": ["en", "de"],
-  "prompt.style": ["qa", "steps"],
-};
-*/
-
 const ENUMS: Record<string, string[]> = {};
-
-const BOOL_HINT = new Set<string>([
-  "llm.use_mmap",
-  "llm.use_mlock",
-  "prompt.cite",
-  "prompt.require_citations",
-]);
-
-const BOOL_HINT2 = new Set<string>([])
+const BOOL_HINT = new Set<string>([])
 
 function guessType(fullPath: string, v: any): "select" | "number" | "boolean" | "text" | "multiline" {
   if (ENUMS[fullPath]) return "select";
@@ -111,7 +94,7 @@ export default function RAGConfigEditor(){
             setExpandedSection(initialExpanded)
         }
         if(schemaData?.data && ((Object.keys(ENUMS)).length == 0)){
-            createEnums(schemaData);
+            createEnumsAndBools(schemaData);
         }
     }, [schemaData])
         
@@ -138,7 +121,7 @@ export default function RAGConfigEditor(){
         await mutate();
     }
 
-    function createEnums(data:any){
+    function createEnumsAndBools(data:any){
         for(const [groupName, groupContent] of Object.entries(data)){
             const props = (groupContent as any).properties;
             if (!props) continue;
@@ -148,11 +131,15 @@ export default function RAGConfigEditor(){
                     console.log("found enum");
                     ENUMS[groupName + '.' + fieldName] = def.enum;
                 }
+                if (def.type){
+                    if(def.type == "boolean"){
+                        console.log(def);
+                        BOOL_HINT.add(groupName + '.' + fieldName)
+                    }   
+                }
             }
         }
     }
-
-
 
     // Hint: works perfectly fine
     function buildTypeMap(obj: any, prefix = ""): Record<string, string> {

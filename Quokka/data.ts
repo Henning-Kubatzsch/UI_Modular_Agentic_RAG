@@ -1,3 +1,5 @@
+import { da } from "zod/locales";
+
 export const data = {
   "llm": {
     "properties": {
@@ -169,3 +171,33 @@ export const data = {
     "type": "object"
   }
 }
+
+const BOOL_HINT = new Set<String>([]);
+const ENUMS : Record<string, string[]> = {};
+
+let allProp = 0;
+let enumProps = 0;
+let propWithType = 0;
+
+function createEnumsAndBools(data:any){
+    for(const [groupName, groupContent] of Object.entries(data)){
+        const props = (groupContent as any).properties;
+        if (!props) continue;
+        for(const[fieldName, fieldDef] of Object.entries(props)){
+            const def = fieldDef as any;
+            allProp += 1;
+            if (def.enum){
+                enumProps += 1;
+                console.log("found enum");
+                ENUMS[groupName + '.' + fieldName] = def.enum;
+            }
+            if (def.type){
+                propWithType += 1;
+            }
+        }
+    }
+}
+
+createEnumsAndBools(data)
+
+console.log(`allProps: ${allProp}, enumProps: ${enumProps}, propWithType ${propWithType}`)
