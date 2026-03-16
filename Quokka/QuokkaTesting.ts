@@ -1,3 +1,5 @@
+//{"data":{"llm":{"model_path":"models/qwen2.5-3b-instruct-q4_k_m.gguf","family":"qwen","n_ctx":2048,"n_gpu_layers":-1,"n_threads":8,"n_batch":256,"seed":42,"temperature":0.4,"top_p":0.9,"repeat_penalty":1.1,"max_tokens":512,"use_mmap":false,"use_mlock":false},"prompt":{"language":"en","style":"steps","max_context_chars":3000,"cite":false,"require_citations":false},"retriever":{"k":3}}}
+
 const data = {
   "llm": {
     "properties": {

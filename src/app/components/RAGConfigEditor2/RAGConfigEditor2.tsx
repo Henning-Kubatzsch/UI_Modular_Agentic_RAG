@@ -274,6 +274,9 @@ export default function RAGConfigEditor(){
         setSavingAll(false);
         return;
       }
+      console.log("cleaned data for sening:");
+      console.log(JSON.stringify({data: cleaned}));
+      
       const res = await fetch("/api/config?mode=replace", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

@@ -4,6 +4,8 @@ import fs from "fs/promises";
 import { parse, stringify } from "yaml";
 
 const FILE = process.env.CONFIG_PATH || "AGENTIC_RAG_CONFIG/configs/rag.yaml";
+const BACKEND_URL = "http://127.0.0.1:8000";
+
 const BACKEND_URL_1 = "http://127.0.0.1:8000/get_config";
 const BACKEND_URL_2 = "http://127.0.0.1:8000/config";
 
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
   if (type == "schema"){
       try {
         const res = await fetch
-        (BACKEND_URL_2, 
+        (`${BACKEND_URL}/config`, 
           {
             method:"GET",
             cache: "no-store"
@@ -51,7 +53,7 @@ export async function GET(request: Request) {
   }else{
     try {
       const res = await fetch
-      (BACKEND_URL_1, 
+      (`${BACKEND_URL}/get_config`, 
         {
           method:"GET",
           cache: "no-store"
@@ -87,7 +89,14 @@ export async function PUT(req: Request) {
     const current = curText ? parse(curText) : {};
 
     const next = mode === "replace" ? incoming : deepMerge(current, incoming);
-    await fs.writeFile(FILE, stringify(next), "utf8");
+
+    const response = await fetch(`${BACKEND_URL}/save_config`,{
+      method : "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(incoming)
+    })
+
+    //await fs.writeFile(FILE, stringify(next), "utf8");
     return NextResponse.json({ ok: true, mode });
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
