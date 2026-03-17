@@ -101,7 +101,15 @@ export default function RAGConfigEditor(){
         if (configData?.data && Object.keys(form).length === 0) {
             originalTypes.current = buildTypeMap(configData.data);
             setForm(configData.data);
-          
+            const output = `export const savedTypes = ${JSON.stringify(originalTypes.current, null, 2)}`;
+            const output2 = `export const form = ${JSON.stringify(form, null, 2)}`;
+            const output3 = `export const configData = ${JSON.stringify(configData.data, null, 2)}`;
+
+
+            console.log(output);
+            console.log(output2);
+            console.log(output3);
+
         }
         else if (configData?.data){   
             setForm(configData.data);
@@ -160,9 +168,11 @@ export default function RAGConfigEditor(){
     }
 
 
+    function fixTypes2(){};
+
+
   function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>): any {
     
-
     for (const [key, value] of Object.entries(obj)) {
       const path = sectionKey ? `${sectionKey}.${key}` : key;
       const expectedType = typeSchema[path];
@@ -282,6 +292,28 @@ export default function RAGConfigEditor(){
     
     setForm((prev) => setAt(prev, absolutePath, nextValue));
   }
+
+  const saveTypesToFile = async () => {
+      try {
+          const response = await fetch('/api/save-types', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              // Hier senden wir den aktuellen Inhalt des Refs
+              body: JSON.stringify(originalTypes.current),
+          });
+
+          if (response.ok) {
+              console.log("Erfolgreich gespeichert!");
+          } else {
+              console.error("Fehler beim Speichern");
+          }
+      } catch (e) {
+          console.error("Netzwerkfehler", e);
+      }
+  };
+
   
   const ExpandSection = (sectionKey: string) => {
     setExpandedSection(prev => {
@@ -316,6 +348,10 @@ export default function RAGConfigEditor(){
   
     return(
         <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+              <button onClick={saveTypesToFile}>Typen speichern</button>
+            </div>
+
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
                 <h2 className="text-lg font-semibold">RAG Config Editor</h2>     
                 <div className="flex items-center gap-2">
@@ -398,8 +434,10 @@ export default function RAGConfigEditor(){
                         key={`${sectionKey}:${path}`}
                         label={`${path}`}
                         value={value}
-                        fieldType={guessType(`${sectionKey}.${path}`, value)}
-                        enumValues={ENUMS[`${sectionKey}.${path}`]}
+                        fieldType={schemaData.data[sectionKey]?.properties?.[path]?.type} 
+                        //fieldType={guessType(`${sectionKey}.${path}`, value)}
+                        enumValues={schemaData.data[sectionKey]?.properties?.[path]?.enum}
+                        //enumValues={ENUMS[`${sectionKey}.${path}`]}
                         onChange={(prev) => onFieldChange(sectionKey, path, prev)}
                       />
                     ))}

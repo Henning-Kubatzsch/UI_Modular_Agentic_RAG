@@ -1,5 +1,7 @@
 //{"data":{"llm":{"model_path":"models/qwen2.5-3b-instruct-q4_k_m.gguf","family":"qwen","n_ctx":2048,"n_gpu_layers":-1,"n_threads":8,"n_batch":256,"seed":42,"temperature":0.4,"top_p":0.9,"repeat_penalty":1.1,"max_tokens":512,"use_mmap":false,"use_mlock":false},"prompt":{"language":"en","style":"steps","max_context_chars":3000,"cite":false,"require_citations":false},"retriever":{"k":3}}}
 
+import { useEffect, useState, useRef, useMemo } from "react"
+
 const data = {
   "llm": {
     "properties": {
@@ -164,3 +166,36 @@ const data = {
     "type": "object"
   }
 }
+
+const savedTypes = {
+  "llm.family": "string",
+  "llm.max_tokens": "int",
+  "llm.model_path": "string",
+  "llm.n_batch": "int",
+  "llm.n_ctx": "int",
+  "llm.n_gpu_layers": "int",
+  "llm.n_threads": "int",
+  "llm.repeat_penalty": "float",
+  "llm.seed": "int",
+  "llm.temperature": "float",
+  "llm.top_p": "float",
+  "llm.use_mlock": "boolean",
+  "llm.use_mmap": "boolean",
+  "prompt.cite": "boolean",
+  "prompt.language": "string",
+  "prompt.max_context_chars": "int",
+  "prompt.require_citations": "boolean",
+  "prompt.style": "string",
+  "retriever.k": "int"
+};
+
+//const originalTypes = useRef<Record<string, string>>({});
+
+const types: Record<string, string> = {}
+
+for (const [key, value] of Object.entries(savedTypes)){
+  console.log(key)
+  types[key] = value;
+}
+
+console.log(types)
