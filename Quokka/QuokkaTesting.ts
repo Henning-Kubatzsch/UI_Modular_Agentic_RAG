@@ -198,4 +198,4 @@ for (const [key, value] of Object.entries(savedTypes)){
   types[key] = value;
 }
 
-console.log(types)
+console.log(data["llm"].properties["family"].enum)
