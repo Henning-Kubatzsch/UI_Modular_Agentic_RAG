@@ -91,7 +91,7 @@ export async function PUT(req: Request) {
     const next = mode === "replace" ? incoming : deepMerge(current, incoming);
 
     const response = await fetch(`${BACKEND_URL}/save_config`,{
-      method : "POST",
+      method : "PUT",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(incoming)
     })
