@@ -6,11 +6,6 @@ import { parse, stringify } from "yaml";
 const FILE = process.env.CONFIG_PATH || "AGENTIC_RAG_CONFIG/configs/rag.yaml";
 const BACKEND_URL = "http://127.0.0.1:8000";
 
-const BACKEND_URL_1 = "http://127.0.0.1:8000/get_config";
-const BACKEND_URL_2 = "http://127.0.0.1:8000/config";
-
-
-
 
 function isObj(x: any) { return x && typeof x === "object" && !Array.isArray(x); }
 function deepMerge(a: any, b: any) {
@@ -89,11 +84,11 @@ export async function PUT(req: Request) {
     const current = curText ? parse(curText) : {};
 
     const next = mode === "replace" ? incoming : deepMerge(current, incoming);
-
+    console.log(next)
     const response = await fetch(`${BACKEND_URL}/save_config`,{
       method : "PUT",
       headers: {"Content-Type": "application/json"},
-      body: JSON.stringify(incoming)
+      body: JSON.stringify(next)
     })
 
     //await fs.writeFile(FILE, stringify(next), "utf8");

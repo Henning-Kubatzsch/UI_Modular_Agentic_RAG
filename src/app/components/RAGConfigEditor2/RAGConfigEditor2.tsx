@@ -26,7 +26,6 @@ function setAt(prevForm: AnyObj, path: string, newValue: any) {
 function flattenSection(sectionKey: string, sectionVal: any): { path: string; value: any }[] {
   const out: { path: string; value: any }[] = [];
 
-  // iterate through key of sectionKey object: adds prefix , value data objects to out
   function walk(prefix: string, v: any) {
     if (v !== null && typeof v === "object" && !Array.isArray(v)) {
       Object.keys(v).forEach((k) => walk(prefix ? `${prefix}.${k}` : k, v[k]));
@@ -35,9 +34,7 @@ function flattenSection(sectionKey: string, sectionVal: any): { path: string; va
     }
   }
   if (sectionVal !== null && typeof sectionVal === "object" && !Array.isArray(sectionVal)) {
-    // if sectionVal is an object and no Array: iterate through key
     Object.keys(sectionVal).forEach((k) => walk(k, sectionVal[k]));
-  // if sectionKey is no object/ an Array: push path and value to out
   } else {
     out.push({ path: sectionKey, value: sectionVal });
   }
@@ -83,7 +80,6 @@ export default function RAGConfigEditor(){
         
     useEffect(() => {
         if (configData?.data && Object.keys(form).length === 0) {
-            originalTypes.current = buildTypeMap(configData.data);
             setForm(configData.data);
         }
         else if (configData?.data){   
@@ -97,72 +93,6 @@ export default function RAGConfigEditor(){
     async function reload() {
         await mutate();
     }
-
-    // Hint: works perfectly fine
-    function buildTypeMap(obj: any, prefix = ""): Record<string, string> {
-        const types: Record<string, string> = {};
-    
-        for (const [key, value] of Object.entries(obj)) {
-        const path = prefix ? `${prefix}.${key}` : key;
-        
-        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-            // Recurse into nested objects
-            Object.assign(types, buildTypeMap(value, path));
-        } else {
-            // Store the type
-            if(typeof value == 'number'){
-            if (Number.isInteger(value)){
-                types[path] = 'int';
-            }else{
-                types[path] = 'float';
-            }
-            }else{
-            types[path] = typeof value;
-            }
-        }
-        }  
-        return types;
-    }
-
-
-    function fixTypes2(){};
-
-
-  function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>): any {
-    
-    for (const [key, value] of Object.entries(obj)) {
-      const path = sectionKey ? `${sectionKey}.${key}` : key;
-      const expectedType = typeSchema[path];
-   
-      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        fixTypes(value, path, typeSchema);
-        continue;
-      }
-
-      if(expectedType === 'int' || expectedType === 'float'){
-        const num = Number(value);       
-        if(isNaN(num)){
-          obj[key] = null;
-        } else {
-          obj[key] = expectedType === 'int' ? Math.floor(num) : num;
-        }
-      }
-      if (expectedType === "boolean" && typeof value === "string") {
-        obj[key] = value === "true";
-      }      
-    }
-    const formCopy = structuredClone(form);
-    formCopy[sectionKey] = obj
-    setForm(formCopy)
-
-    return obj
-  }
-
-  function buildSectionPayload(sectionKey: string){   
-
-    const cleaned = fixTypes(structuredClone(form[sectionKey]), sectionKey, originalTypes.current);
-    return {[sectionKey]: cleaned}
-  }
 
   function emptyValue(sectionKey : string){    
     const section = structuredClone(form[sectionKey]);
@@ -180,7 +110,7 @@ export default function RAGConfigEditor(){
 
     setSaving(sectionKey);
     try {
-      const sectionPayload = buildSectionPayload(sectionKey);
+      const sectionPayload = {[sectionKey]:structuredClone(form[sectionKey])}
       if (emptyValue(sectionKey)){
         setSaving(null);
         return;
@@ -220,8 +150,7 @@ export default function RAGConfigEditor(){
           }
         }
       }      
-      const cleaned = fixTypes(structuredClone(form), "", originalTypes.current);
-
+      const cleaned = structuredClone(form);
       if (!cleaned || Object.keys(cleaned).length === 0) {
         setSavingAll(false);
         return;
@@ -386,7 +315,7 @@ export default function RAGConfigEditor(){
                 {/*Adjust collumn count here*/}
                   <div className="grid gap-2 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2">
                     {rows.map(({ path, value }) => {
-                      const fieldDef = schemaData.data[sectionKey]?.properties?.[path];
+                      const fieldDef = schemaData?.data[sectionKey]?.properties?.[path];
                       const hasEnum = Array.isArray(fieldDef?.enum) && fieldDef.enum.length > 0;
                       
                       return(
@@ -395,7 +324,6 @@ export default function RAGConfigEditor(){
                         key={`${sectionKey}:${path}`}
                         label={`${path}`}
                         value={value}
-
                         fieldType={hasEnum ? "select" : fieldDef?.type}
                         enumValues={fieldDef?.enum}
                         onChange={(prev) => onFieldChange(sectionKey, path, prev)}
