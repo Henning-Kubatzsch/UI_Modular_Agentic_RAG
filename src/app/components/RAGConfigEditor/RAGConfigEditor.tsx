@@ -492,3 +492,100 @@ function Row({
     </div>
   );
 }
+
+export function Row2({
+  label,
+  value,
+  fieldType,
+  enumValues,
+  onChange,
+}: {
+  label: string;
+  value: any;
+  // UPDATE 1: Typen erweitert um "integer" und "string" (JSON Schema Standards)
+  fieldType: "select" | "number" | "integer" | "boolean" | "string" | "text" | "multiline" | undefined;
+  enumValues?: string[];
+  onChange: (v: any) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 items-center gap-3 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2">
+      <div className="text-sm text-foreground truncate whitespace-nowrap" title={label}>
+        <span className="font-mono">{label}</span>
+      </div>
+
+      <div className="min-w-0">
+        {/* FALL 1: Select / Enum */}
+        {fieldType === "select" && enumValues ? (
+          <select
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value || undefined)}
+            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+          >
+            <option value="" className="bg-black text-foreground">
+              — auswählen —
+            </option>
+            {enumValues.map((opt) => (
+              <option key={opt} value={opt} className="bg-black text-foreground">
+                {opt}
+              </option>
+            ))}
+          </select>
+
+        /* FALL 2: Boolean */
+        ) : fieldType === "boolean" ? (
+          <label className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={!!value}
+              onChange={(e) => onChange(e.target.checked)}
+              className="h-4 w-4 rounded border-white/30 bg-black text-sky-500 focus:ring-sky-500/40"
+            />
+            <span className="text-sm text-foreground">{value ? "true" : "false"}</span>
+          </label>
+
+        /* FALL 3: Number UND Integer */
+        // UPDATE 2: Wir prüfen auf "number" ODER "integer"
+        ) : fieldType === "number" || fieldType === "integer" ? (
+          <input
+            type="number"
+            value={value ?? ""}
+            // Optional: Bei "integer" Schrittweite auf 1 setzen
+            step={fieldType === "integer" ? "1" : "any"}
+            onChange={(e) => {
+              const raw = e.target.value;
+              if (raw === "") return onChange(undefined);
+              const n = Number(raw);
+              onChange(Number.isNaN(n) ? undefined : n);
+            }}
+            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+          />
+
+        /* FALL 4: Multiline / JSON Objects */
+        ) : fieldType === "multiline" ? (
+          <textarea
+            value={
+              Array.isArray(value)
+                ? JSON.stringify(value, null, 2)
+                : typeof value === "object" && value !== null
+                ? JSON.stringify(value, null, 2)
+                : value ?? ""
+            }
+            onChange={(e) => onChange(safeParseJSONLoose(e.target.value))}
+            className="h-28 w-full rounded-md border border-white/20 bg-black px-3 py-2 font-mono text-sm text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+            spellCheck={false}
+          />
+
+        /* FALL 5: Default (String / Text) */
+        ) : (
+          <input
+            type="text"
+            value={value ?? ""}
+            onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
+            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+            placeholder="Wert eingeben…"
+          />
+        )}
+      </div>
+    </div>
+  );
+}

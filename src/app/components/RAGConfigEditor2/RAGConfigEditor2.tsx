@@ -341,7 +341,8 @@ export default function RAGConfigEditor(){
 }
 
 // -------------------- Row --------------------
-function Row({
+
+export function Row({
   label,
   value,
   fieldType,
@@ -350,7 +351,8 @@ function Row({
 }: {
   label: string;
   value: any;
-  fieldType: "select" | "number" | "boolean" | "text" | "multiline";
+  // UPDATE 1: Typen erweitert um "integer" und "string" (JSON Schema Standards)
+  fieldType: "select" | "number" | "integer" | "boolean" | "string" | undefined;
   enumValues?: string[];
   onChange: (v: any) => void;
 }) {
@@ -361,6 +363,7 @@ function Row({
       </div>
 
       <div className="min-w-0">
+        {/* FALL 1: Select / Enum */}
         {fieldType === "select" && enumValues ? (
           <select
             value={value ?? ""}
@@ -376,6 +379,8 @@ function Row({
               </option>
             ))}
           </select>
+
+        /* FALL 2: Boolean */
         ) : fieldType === "boolean" ? (
           <label className="inline-flex items-center gap-2">
             <input
@@ -386,10 +391,15 @@ function Row({
             />
             <span className="text-sm text-foreground">{value ? "true" : "false"}</span>
           </label>
-        ) : fieldType === "number" ? (
+
+        /* FALL 3: Number UND Integer */
+        // UPDATE 2: Wir prüfen auf "number" ODER "integer"
+        ) : fieldType === "number" || fieldType === "integer" ? (
           <input
             type="number"
             value={value ?? ""}
+            // Optional: Bei "integer" Schrittweite auf 1 setzen
+            step={fieldType === "integer" ? "1" : "any"}
             onChange={(e) => {
               const raw = e.target.value;
               if (raw === "") return onChange(undefined);
@@ -397,19 +407,6 @@ function Row({
               onChange(Number.isNaN(n) ? undefined : n);
             }}
             className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
-          />
-        ) : fieldType === "multiline" ? (
-          <textarea
-            value={
-              Array.isArray(value)
-                ? JSON.stringify(value, null, 2)
-                : typeof value === "object" && value !== null
-                ? JSON.stringify(value, null, 2)
-                : value ?? ""
-            }
-            onChange={(e) => onChange(safeParseJSONLoose(e.target.value))}
-            className="h-28 w-full rounded-md border border-white/20 bg-black px-3 py-2 font-mono text-sm text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
-            spellCheck={false}
           />
         ) : (
           <input
