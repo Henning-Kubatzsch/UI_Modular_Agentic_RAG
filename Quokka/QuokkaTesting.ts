@@ -164,33 +164,3 @@ const data = {
     "type": "object"
   }
 }
-
-
-const BOOL_HINT = new Set<String>([]);
-const ENUMS : Record<string, string[]> = {};
-
-
-function createEnumsAndBools(data:any){
-    for(const [groupName, groupContent] of Object.entries(data)){
-        const props = (groupContent as any).properties;
-        if (!props) continue;
-        for(const[fieldName, fieldDef] of Object.entries(props)){
-            const def = fieldDef as any;
-            if (def.enum){
-                console.log("found enum");
-                ENUMS[groupName + '.' + fieldName] = def.enum;
-            }
-            if (def.type){
-                if(def.type == "boolean"){
-                    console.log(def);
-                    BOOL_HINT.add(groupName + '.' + fieldName)
-                }   
-            }
-        }
-    }
-}
-
-createEnumsAndBools(data)
-
-console.log(ENUMS)
-console.log(BOOL_HINT)

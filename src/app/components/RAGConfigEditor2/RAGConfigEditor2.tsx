@@ -88,7 +88,6 @@ export default function RAGConfigEditor(){
         if(schemaData?.data && Object.keys(expandedSection).length == 0){
             const initialExpanded : Record<string, boolean> = {}
             for (const key in schemaData.data){
-                console.log(`key: ${key}`);
                 initialExpanded[key] = true;
             }
             setExpandedSection(initialExpanded)
@@ -102,19 +101,14 @@ export default function RAGConfigEditor(){
         if (configData?.data && Object.keys(form).length === 0) {
             originalTypes.current = buildTypeMap(configData.data);
             setForm(configData.data);
+          
         }
-        else if (configData?.data){
+        else if (configData?.data){   
             setForm(configData.data);
         }
         for(const [key, value] of Object.entries(expandedSection)){
-            console.log(`key: ${key} ... value: ${value}`);
         }
     }, [configData]);
-
-
-    useEffect(() =>{
-        console.log("nice");
-    }, [expandedSection])
  
 
     async function reload() {
@@ -128,12 +122,10 @@ export default function RAGConfigEditor(){
             for(const[fieldName, fieldDef] of Object.entries(props)){
                 const def = fieldDef as any;
                 if (def.enum){
-                    console.log("found enum");
                     ENUMS[groupName + '.' + fieldName] = def.enum;
                 }
                 if (def.type){
                     if(def.type == "boolean"){
-                        console.log(def);
                         BOOL_HINT.add(groupName + '.' + fieldName)
                     }   
                 }
@@ -164,9 +156,6 @@ export default function RAGConfigEditor(){
             }
         }
         }  
-        
-        console.log(types)
-
         return types;
     }
 
@@ -221,14 +210,10 @@ export default function RAGConfigEditor(){
 
   // SAVE: only selected section → MERGE
   async function saveSection(sectionKey: string) {
-    // setSaving: React useState hook, sets variable string saving (sectionKey) 
-
-    //console.log("originlaTypes.current in saveSection() 1: ", originalTypes.current);
 
     setSaving(sectionKey);
     try {
       const sectionPayload = buildSectionPayload(sectionKey);
-      console.log("sectionPayload after buildSectionPayload: ", sectionPayload);
       if (emptyValue(sectionKey)){
         setSaving(null);
         return;
@@ -268,14 +253,12 @@ export default function RAGConfigEditor(){
           }
         }
       }      
-      const cleaned =fixTypes(structuredClone(form), "", originalTypes.current);
+      const cleaned = fixTypes(structuredClone(form), "", originalTypes.current);
 
       if (!cleaned || Object.keys(cleaned).length === 0) {
         setSavingAll(false);
         return;
-      }
-      console.log("cleaned data for sening:");
-      console.log(JSON.stringify({data: cleaned}));
+      }  
       
       const res = await fetch("/api/config?mode=replace", {
         method: "PUT",
@@ -355,7 +338,6 @@ export default function RAGConfigEditor(){
             </div>
                     {ordered.map((sectionKey) => {      
           const sectionVal = form?.[sectionKey];
-          //console.log(`sectionVal: ${Object.keys(sectionVal)}`);
           const rows = flattenSection(sectionKey, sectionVal);
           const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);          
          
