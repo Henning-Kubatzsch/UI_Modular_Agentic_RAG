@@ -52,19 +52,6 @@ function shallowEqual(a: any, b: any) {
   }
 }
 
-const ENUMS: Record<string, string[]> = {};
-const BOOL_HINT = new Set<string>([])
-
-function guessType(fullPath: string, v: any): "select" | "number" | "boolean" | "text" | "multiline" {
-  if (ENUMS[fullPath]) return "select";
-  if (BOOL_HINT.has(fullPath) || typeof v === "boolean") return "boolean";
-  if (typeof v === "number") return "number";
-  if (Array.isArray(v)) return "multiline";
-  if (typeof v === "string") return v.includes("\n") ? "multiline" : "text";
-  if (v !== null && typeof v === "object") return "multiline";
-  return "text";
-}
-
 function safeParseJSONLoose(input: string): any {
   try {
     return JSON.parse(input);
@@ -92,24 +79,12 @@ export default function RAGConfigEditor(){
             }
             setExpandedSection(initialExpanded)
         }
-        if(schemaData?.data && ((Object.keys(ENUMS)).length == 0)){
-            createEnumsAndBools(schemaData);
-        }
     }, [schemaData])
         
     useEffect(() => {
         if (configData?.data && Object.keys(form).length === 0) {
             originalTypes.current = buildTypeMap(configData.data);
             setForm(configData.data);
-            const output = `export const savedTypes = ${JSON.stringify(originalTypes.current, null, 2)}`;
-            const output2 = `export const form = ${JSON.stringify(form, null, 2)}`;
-            const output3 = `export const configData = ${JSON.stringify(configData.data, null, 2)}`;
-
-
-            console.log(output);
-            console.log(output2);
-            console.log(output3);
-
         }
         else if (configData?.data){   
             setForm(configData.data);
@@ -121,24 +96,6 @@ export default function RAGConfigEditor(){
 
     async function reload() {
         await mutate();
-    }
-
-    function createEnumsAndBools(data:any){
-        for(const [groupName, groupContent] of Object.entries(data)){
-            const props = (groupContent as any).properties;
-            if (!props) continue;
-            for(const[fieldName, fieldDef] of Object.entries(props)){
-                const def = fieldDef as any;
-                if (def.enum){
-                    ENUMS[groupName + '.' + fieldName] = def.enum;
-                }
-                if (def.type){
-                    if(def.type == "boolean"){
-                        BOOL_HINT.add(groupName + '.' + fieldName)
-                    }   
-                }
-            }
-        }
     }
 
     // Hint: works perfectly fine
@@ -428,19 +385,22 @@ export default function RAGConfigEditor(){
                 <div className="px-5 py-4">
                 {/*Adjust collumn count here*/}
                   <div className="grid gap-2 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2">
-                    {rows.map(({ path, value }) => (
+                    {rows.map(({ path, value }) => {
+                      const fieldDef = schemaData.data[sectionKey]?.properties?.[path];
+                      const hasEnum = Array.isArray(fieldDef?.enum) && fieldDef.enum.length > 0;
+                      
+                      return(
                       <Row
                         // the key value is for react
                         key={`${sectionKey}:${path}`}
                         label={`${path}`}
                         value={value}
-                        fieldType={schemaData.data[sectionKey]?.properties?.[path]?.type} 
-                        //fieldType={guessType(`${sectionKey}.${path}`, value)}
-                        enumValues={schemaData.data[sectionKey]?.properties?.[path]?.enum}
-                        //enumValues={ENUMS[`${sectionKey}.${path}`]}
+
+                        fieldType={hasEnum ? "select" : fieldDef?.type}
+                        enumValues={fieldDef?.enum}
                         onChange={(prev) => onFieldChange(sectionKey, path, prev)}
-                      />
-                    ))}
+                      />);
+                    })}
                   </div>
                 </div>
               </div>
