@@ -2,6 +2,7 @@
 import { useEffect, useState, useRef, useMemo } from "react"
 import useSWR from "swr";
 import {pruneEmpty} from "../../../../utils"
+import { init } from "next/dist/compiled/webpack/webpack";
 
 
 
@@ -25,7 +26,6 @@ function setAt(prevForm: AnyObj, path: string, newValue: any) {
 function flattenSection(sectionKey: string, sectionVal: any): { path: string; value: any }[] {
   const out: { path: string; value: any }[] = [];
 
-  // iterate through key of sectionKey object: adds prefix , value data objects to out
   function walk(prefix: string, v: any) {
     if (v !== null && typeof v === "object" && !Array.isArray(v)) {
       Object.keys(v).forEach((k) => walk(prefix ? `${prefix}.${k}` : k, v[k]));
@@ -34,9 +34,7 @@ function flattenSection(sectionKey: string, sectionVal: any): { path: string; va
     }
   }
   if (sectionVal !== null && typeof sectionVal === "object" && !Array.isArray(sectionVal)) {
-    // if sectionVal is an object and no Array: iterate through key
     Object.keys(sectionVal).forEach((k) => walk(k, sectionVal[k]));
-  // if sectionKey is no object/ an Array: push path and value to out
   } else {
     out.push({ path: sectionKey, value: sectionVal });
   }
@@ -51,30 +49,6 @@ function shallowEqual(a: any, b: any) {
   }
 }
 
-// Felder-Erkennung
-const ENUMS: Record<string, string[]> = {
-  "llm.family": ["qwen", "qwen2", "llama3", "phi3", "mistral"],
-  "prompt.language": ["en", "de"],
-  "prompt.style": ["qa", "steps"],
-};
-
-const BOOL_HINT = new Set<string>([
-  "llm.use_mmap",
-  "llm.use_mlock",
-  "prompt.cite",
-  "prompt.require_citations",
-]);
-
-function guessType(fullPath: string, v: any): "select" | "number" | "boolean" | "text" | "multiline" {
-  if (ENUMS[fullPath]) return "select";
-  if (BOOL_HINT.has(fullPath) || typeof v === "boolean") return "boolean";
-  if (typeof v === "number") return "number";
-  if (Array.isArray(v)) return "multiline";
-  if (typeof v === "string") return v.includes("\n") ? "multiline" : "text";
-  if (v !== null && typeof v === "object") return "multiline";
-  return "text";
-}
-
 function safeParseJSONLoose(input: string): any {
   try {
     return JSON.parse(input);
@@ -85,107 +59,40 @@ function safeParseJSONLoose(input: string): any {
 
 export default function RAGConfigEditor(){
   
-    const { data, isLoading, mutate } = useSWR("/api/config", fetcher);
-    const serverCfg = useMemo<AnyObj>(() => data?.data ?? {}, [data]);
+    const { data: configData, isLoading: configLoading, mutate } = useSWR("/api/config", fetcher);
+    const { data: schemaData, isLoading: schemaLoading} = useSWR("/api/config?type=schema", fetcher);
+    const serverCfg = useMemo<AnyObj>(() => configData?.configData ?? {}, [configData]);
     const [form, setForm] = useState<AnyObj>({});
     const [saving, setSaving] = useState<string | null>(null); // sectionKey
     const [savingAll, setSavingAll] = useState<boolean>(false);
     const originalTypes = useRef<Record<string, string>>({});
     const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
 
+    useEffect(() => {
+        if(schemaData?.data && Object.keys(expandedSection).length == 0){
+            const initialExpanded : Record<string, boolean> = {}
+            for (const key in schemaData.data){
+                initialExpanded[key] = true;
+            }
+            setExpandedSection(initialExpanded)
+        }
+    }, [schemaData])
         
-  useEffect(() => {
-    if(data?.data && Object.keys(expandedSection).length == 0){
-      const initialExpanded : Record<string, boolean> = {};
-      for (const key in data.data){
-        initialExpanded[key] = true;
-      }
-      setExpandedSection(initialExpanded);
-    }
-    if (data?.data && Object.keys(form).length === 0) {
-      originalTypes.current = buildTypeMap(data.data);
-      setForm(data.data);
-    }
-    else if (data?.data){
-      setForm(data.data);
-    }
-    for(const [key, value] of Object.entries(expandedSection)){
-      console.log(`key: ${key} ... value: ${value}`);
-    }
-  }, [data]);
-
-  useEffect(() =>{
-    console.log("nice");
-  }, [expandedSection])
-  
-
-  async function reload() {
-    await mutate();
-  }
-
-  // Hint: works perfectly fine
-  function buildTypeMap(obj: any, prefix = ""): Record<string, string> {
-    const types: Record<string, string> = {};
-   
-    for (const [key, value] of Object.entries(obj)) {
-      const path = prefix ? `${prefix}.${key}` : key;
-      
-      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        // Recurse into nested objects
-        Object.assign(types, buildTypeMap(value, path));
-      } else {
-        // Store the type
-        if(typeof value == 'number'){
-          if (Number.isInteger(value)){
-            types[path] = 'int';
-          }else{
-            types[path] = 'float';
-          }
-        }else{
-          types[path] = typeof value;
+    useEffect(() => {
+        if (configData?.data && Object.keys(form).length === 0) {
+            setForm(configData.data);
         }
-      }
-    }    
-    return types;
-  }
-
-
-  function fixTypes(obj: any, sectionKey: string, typeSchema: Record<string, string>): any {
-    
-
-    for (const [key, value] of Object.entries(obj)) {
-      const path = sectionKey ? `${sectionKey}.${key}` : key;
-      const expectedType = typeSchema[path];
-   
-      if (value !== null && typeof value === "object" && !Array.isArray(value)) {
-        fixTypes(value, path, typeSchema);
-        continue;
-      }
-
-      if(expectedType === 'int' || expectedType === 'float'){
-        const num = Number(value);       
-        if(isNaN(num)){
-          obj[key] = null;
-        } else {
-          obj[key] = expectedType === 'int' ? Math.floor(num) : num;
+        else if (configData?.data){   
+            setForm(configData.data);
         }
-      }
-      if (expectedType === "boolean" && typeof value === "string") {
-        obj[key] = value === "true";
-      }      
+        for(const [key, value] of Object.entries(expandedSection)){
+        }
+    }, [configData]);
+ 
+
+    async function reload() {
+        await mutate();
     }
-    const formCopy = structuredClone(form);
-    formCopy[sectionKey] = obj
-    setForm(formCopy)
-
-    return obj
-  }
-
-  function buildSectionPayload(sectionKey: string){   
-
-    const cleaned = fixTypes(structuredClone(form[sectionKey]), sectionKey, originalTypes.current);
-    return {[sectionKey]: cleaned}
-  }
 
   function emptyValue(sectionKey : string){    
     const section = structuredClone(form[sectionKey]);
@@ -200,14 +107,10 @@ export default function RAGConfigEditor(){
 
   // SAVE: only selected section → MERGE
   async function saveSection(sectionKey: string) {
-    // setSaving: React useState hook, sets variable string saving (sectionKey) 
-
-    //console.log("originlaTypes.current in saveSection() 1: ", originalTypes.current);
 
     setSaving(sectionKey);
     try {
-      const sectionPayload = buildSectionPayload(sectionKey);
-      console.log("sectionPayload after buildSectionPayload: ", sectionPayload);
+      const sectionPayload = {[sectionKey]:structuredClone(form[sectionKey])}
       if (emptyValue(sectionKey)){
         setSaving(null);
         return;
@@ -247,12 +150,12 @@ export default function RAGConfigEditor(){
           }
         }
       }      
-      const cleaned =fixTypes(structuredClone(form), "", originalTypes.current);
-
+      const cleaned = structuredClone(form);
       if (!cleaned || Object.keys(cleaned).length === 0) {
         setSavingAll(false);
         return;
-      }
+      }  
+      
       const res = await fetch("/api/config?mode=replace", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -275,6 +178,28 @@ export default function RAGConfigEditor(){
     
     setForm((prev) => setAt(prev, absolutePath, nextValue));
   }
+
+  const saveTypesToFile = async () => {
+      try {
+          const response = await fetch('/api/save-types', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+              },
+              // Hier senden wir den aktuellen Inhalt des Refs
+              body: JSON.stringify(originalTypes.current),
+          });
+
+          if (response.ok) {
+              console.log("Erfolgreich gespeichert!");
+          } else {
+              console.error("Fehler beim Speichern");
+          }
+      } catch (e) {
+          console.error("Netzwerkfehler", e);
+      }
+  };
+
   
   const ExpandSection = (sectionKey: string) => {
     setExpandedSection(prev => {
@@ -287,7 +212,7 @@ export default function RAGConfigEditor(){
   }
 
 
-  if (isLoading) {
+  if (configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-foreground">
         <div className="flex items-center gap-3 text-foreground">
@@ -310,6 +235,10 @@ export default function RAGConfigEditor(){
     return(
         <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+              <button onClick={saveTypesToFile}>Typen speichern</button>
+            </div>
+
+            <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
                 <h2 className="text-lg font-semibold">RAG Config Editor</h2>     
                 <div className="flex items-center gap-2">
                     <button
@@ -331,7 +260,6 @@ export default function RAGConfigEditor(){
             </div>
                     {ordered.map((sectionKey) => {      
           const sectionVal = form?.[sectionKey];
-          //console.log(`sectionVal: ${Object.keys(sectionVal)}`);
           const rows = flattenSection(sectionKey, sectionVal);
           const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);          
          
@@ -386,17 +314,21 @@ export default function RAGConfigEditor(){
                 <div className="px-5 py-4">
                 {/*Adjust collumn count here*/}
                   <div className="grid gap-2 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2">
-                    {rows.map(({ path, value }) => (
+                    {rows.map(({ path, value }) => {
+                      const fieldDef = schemaData?.data[sectionKey]?.properties?.[path];
+                      const hasEnum = Array.isArray(fieldDef?.enum) && fieldDef.enum.length > 0;
+                      
+                      return(
                       <Row
                         // the key value is for react
                         key={`${sectionKey}:${path}`}
                         label={`${path}`}
                         value={value}
-                        fieldType={guessType(`${sectionKey}.${path}`, value)}
-                        enumValues={ENUMS[`${sectionKey}.${path}`]}
+                        fieldType={hasEnum ? "select" : fieldDef?.type}
+                        enumValues={fieldDef?.enum}
                         onChange={(prev) => onFieldChange(sectionKey, path, prev)}
-                      />
-                    ))}
+                      />);
+                    })}
                   </div>
                 </div>
               </div>
@@ -409,91 +341,8 @@ export default function RAGConfigEditor(){
 }
 
 // -------------------- Row --------------------
-function Row({
-  label,
-  value,
-  fieldType,
-  enumValues,
-  onChange,
-}: {
-  label: string;
-  value: any;
-  fieldType: "select" | "number" | "boolean" | "text" | "multiline";
-  enumValues?: string[];
-  onChange: (v: any) => void;
-}) {
-  return (
-    <div className="grid grid-cols-2 items-center gap-3 rounded-lg border border-white/15 bg-white/[0.03] px-3 py-2">
-      <div className="text-sm text-foreground truncate whitespace-nowrap" title={label}>
-        <span className="font-mono">{label}</span>
-      </div>
 
-      <div className="min-w-0">
-        {fieldType === "select" && enumValues ? (
-          <select
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value || undefined)}
-            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
-          >
-            <option value="" className="bg-black text-foreground">
-              — auswählen —
-            </option>
-            {enumValues.map((opt) => (
-              <option key={opt} value={opt} className="bg-black text-foreground">
-                {opt}
-              </option>
-            ))}
-          </select>
-        ) : fieldType === "boolean" ? (
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={!!value}
-              onChange={(e) => onChange(e.target.checked)}
-              className="h-4 w-4 rounded border-white/30 bg-black text-sky-500 focus:ring-sky-500/40"
-            />
-            <span className="text-sm text-foreground">{value ? "true" : "false"}</span>
-          </label>
-        ) : fieldType === "number" ? (
-          <input
-            type="number"
-            value={value ?? ""}
-            onChange={(e) => {
-              const raw = e.target.value;
-              if (raw === "") return onChange(undefined);
-              const n = Number(raw);
-              onChange(Number.isNaN(n) ? undefined : n);
-            }}
-            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
-          />
-        ) : fieldType === "multiline" ? (
-          <textarea
-            value={
-              Array.isArray(value)
-                ? JSON.stringify(value, null, 2)
-                : typeof value === "object" && value !== null
-                ? JSON.stringify(value, null, 2)
-                : value ?? ""
-            }
-            onChange={(e) => onChange(safeParseJSONLoose(e.target.value))}
-            className="h-28 w-full rounded-md border border-white/20 bg-black px-3 py-2 font-mono text-sm text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
-            spellCheck={false}
-          />
-        ) : (
-          <input
-            type="text"
-            value={value ?? ""}
-            onChange={(e) => onChange(e.target.value === "" ? undefined : e.target.value)}
-            className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
-            placeholder="Wert eingeben…"
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-export function Row2({
+export function Row({
   label,
   value,
   fieldType,
@@ -503,7 +352,7 @@ export function Row2({
   label: string;
   value: any;
   // UPDATE 1: Typen erweitert um "integer" und "string" (JSON Schema Standards)
-  fieldType: "select" | "number" | "integer" | "boolean" | "string" | "text" | "multiline" | undefined;
+  fieldType: "select" | "number" | "integer" | "boolean" | "string" | undefined;
   enumValues?: string[];
   onChange: (v: any) => void;
 }) {
@@ -559,23 +408,6 @@ export function Row2({
             }}
             className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
           />
-
-        /* FALL 4: Multiline / JSON Objects */
-        ) : fieldType === "multiline" ? (
-          <textarea
-            value={
-              Array.isArray(value)
-                ? JSON.stringify(value, null, 2)
-                : typeof value === "object" && value !== null
-                ? JSON.stringify(value, null, 2)
-                : value ?? ""
-            }
-            onChange={(e) => onChange(safeParseJSONLoose(e.target.value))}
-            className="h-28 w-full rounded-md border border-white/20 bg-black px-3 py-2 font-mono text-sm text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
-            spellCheck={false}
-          />
-
-        /* FALL 5: Default (String / Text) */
         ) : (
           <input
             type="text"
