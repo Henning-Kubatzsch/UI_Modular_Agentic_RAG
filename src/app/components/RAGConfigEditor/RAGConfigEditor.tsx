@@ -61,7 +61,7 @@ export default function RAGConfigEditor(){
   
     const { data: configData, isLoading: configLoading, mutate } = useSWR("/api/config", fetcher);
     const { data: schemaData, isLoading: schemaLoading} = useSWR("/api/config?type=schema", fetcher);
-    const serverCfg = useMemo<AnyObj>(() => configData?.configData ?? {}, [configData]);
+    const serverCfg = useMemo<AnyObj>(() => configData?.data ?? {}, [configData]);
     const [form, setForm] = useState<AnyObj>({});
     const [saving, setSaving] = useState<string | null>(null); // sectionKey
     const [savingAll, setSavingAll] = useState<boolean>(false);
