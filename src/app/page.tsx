@@ -13,8 +13,8 @@ export default function Page() {
      
 
       <main className="mx-auto max-w-7xl px-6 py-6 space-y-8">
-        <RAGConfigEditor />
         <AskRag />
+        <RAGConfigEditor />
       </main>
     </div>
   );

@@ -179,28 +179,7 @@ export default function RAGConfigEditor(){
     setForm((prev) => setAt(prev, absolutePath, nextValue));
   }
 
-  const saveTypesToFile = async () => {
-      try {
-          const response = await fetch('/api/save-types', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-              },
-              // Hier senden wir den aktuellen Inhalt des Refs
-              body: JSON.stringify(originalTypes.current),
-          });
-
-          if (response.ok) {
-              console.log("Erfolgreich gespeichert!");
-          } else {
-              console.error("Fehler beim Speichern");
-          }
-      } catch (e) {
-          console.error("Netzwerkfehler", e);
-      }
-  };
-
-  
+ 
   const ExpandSection = (sectionKey: string) => {
     setExpandedSection(prev => {
       const newState = {...prev};
@@ -233,11 +212,7 @@ export default function RAGConfigEditor(){
   const ordered = [...preferred.filter((k) => allKeys.includes(k)), ...allKeys.filter((k) => !preferred.includes(k))];
   
     return(
-        <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
-            <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-              <button onClick={saveTypesToFile}>Typen speichern</button>
-            </div>
-
+        <section className="rounded-xl border border-white/10 bg-white/[0.03] ">          
             <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
                 <h2 className="text-lg font-semibold">RAG Config Editor</h2>     
                 <div className="flex items-center gap-2">
