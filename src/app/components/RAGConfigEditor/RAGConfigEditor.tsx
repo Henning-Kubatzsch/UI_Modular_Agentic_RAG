@@ -1,8 +1,6 @@
 "use client"
 import { useEffect, useState, useRef, useMemo } from "react"
 import useSWR from "swr";
-import {pruneEmpty} from "../../../../utils"
-import { init } from "next/dist/compiled/webpack/webpack";
 
 
 
@@ -49,14 +47,6 @@ function shallowEqual(a: any, b: any) {
   }
 }
 
-function safeParseJSONLoose(input: string): any {
-  try {
-    return JSON.parse(input);
-  } catch {
-    return input;
-  }
-}
-
 export default function RAGConfigEditor(){
   
     const { data: configData, isLoading: configLoading, mutate } = useSWR("/api/config", fetcher);
@@ -65,7 +55,6 @@ export default function RAGConfigEditor(){
     const [form, setForm] = useState<AnyObj>({});
     const [saving, setSaving] = useState<string | null>(null); // sectionKey
     const [savingAll, setSavingAll] = useState<boolean>(false);
-    const originalTypes = useRef<Record<string, string>>({});
     const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
@@ -84,8 +73,6 @@ export default function RAGConfigEditor(){
         }
         else if (configData?.data){   
             setForm(configData.data);
-        }
-        for(const [key, value] of Object.entries(expandedSection)){
         }
     }, [configData]);
  
