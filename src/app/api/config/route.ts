@@ -1,13 +1,13 @@
 // app/api/config/route.ts
 import { NextResponse } from "next/server";
 import fs from "fs/promises";
-import { parse, stringify } from "yaml";
+import { parse} from "yaml";
 
 const FILE = process.env.CONFIG_PATH || "AGENTIC_RAG_CONFIG/configs/rag.yaml";
 const BACKEND_URL = "http://127.0.0.1:8000";
 
 
-function isObj(x: any) { return x && typeof x === "object" && !Array.isArray(x); }
+function isObj(x: unknown) { return x && typeof x === "object" && !Array.isArray(x); }
 function deepMerge(a: any, b: any) {
   if (!isObj(a) || !isObj(b)) return b;
   const out: any = { ...a };
