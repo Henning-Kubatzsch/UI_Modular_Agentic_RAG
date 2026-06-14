@@ -51,7 +51,7 @@ function shallowEqual(a: any, b: any) {
 export default function RAGConfigEditor(){
   
   const { data: configData, isLoading: configLoading, mutate } = useSWR("/api/config", fetcher);
-  const { data: schemaData} = useSWR("/api/config?type=schema", fetcher);
+  const { data: schemaData, isLoading: schemaIsLoading} = useSWR("/api/config?type=schema", fetcher);
   const serverCfg = useMemo<AnyObj>(() => configData?.data ?? {}, [configData]);
   const [form, setForm] = useState<AnyObj>({});
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
@@ -161,11 +161,10 @@ export default function RAGConfigEditor(){
     }
   }
 
-  function onFieldChange(sectionKey: string, fieldPath: string, nextValue: any) {
+  const onFieldChange = (sectionKey: string, fieldPath:string, nextValue: any) => {
     const absolutePath = `${sectionKey}.${fieldPath}`;
     setForm((prev) => setAt(prev, absolutePath, nextValue));
   }
-
  
   const expandSection = (sectionKey: string) => {
     setExpandedSection(prev => {
@@ -176,7 +175,7 @@ export default function RAGConfigEditor(){
     )
   }
 
-  if (configLoading) {
+  if (configLoading || schemaIsLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-foreground">
         <div className="flex items-center gap-3 text-foreground">
@@ -188,7 +187,7 @@ export default function RAGConfigEditor(){
   }
 
   const allKeys = Object.keys(form || {});
-
+  
   // here we can define an order how the UI elements should be listet
   const preferred = ["llm", "prompt", "retriever", "retrieval"];
   // first add elements to ordered that are in preferred, then those that are not in preferred
