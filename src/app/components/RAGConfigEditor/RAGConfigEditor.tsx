@@ -50,37 +50,37 @@ function shallowEqual(a: any, b: any) {
 
 export default function RAGConfigEditor(){
   
-    const { data: configData, isLoading: configLoading, mutate } = useSWR("/api/config", fetcher);
-    const { data: schemaData, isLoading: schemaLoading} = useSWR("/api/config?type=schema", fetcher);
-    const serverCfg = useMemo<AnyObj>(() => configData?.data ?? {}, [configData]);
-    const [form, setForm] = useState<AnyObj>({});
-    const [saving, setSaving] = useState<string | null>(null); // sectionKey
-    const [savingAll, setSavingAll] = useState<boolean>(false);
-    const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
+  const { data: configData, isLoading: configLoading, mutate } = useSWR("/api/config", fetcher);
+  const { data: schemaData} = useSWR("/api/config?type=schema", fetcher);
+  const serverCfg = useMemo<AnyObj>(() => configData?.data ?? {}, [configData]);
+  const [form, setForm] = useState<AnyObj>({});
+  const [saving, setSaving] = useState<string | null>(null); // sectionKey
+  const [savingAll, setSavingAll] = useState<boolean>(false);
+  const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
 
-    useEffect(() => {
-        if(schemaData?.data && Object.keys(expandedSection).length == 0){
-            const initialExpanded : Record<string, boolean> = {}
-            for (const key in schemaData.data){
-                initialExpanded[key] = true;
-            }
-            setExpandedSection(initialExpanded)
-        }
-    }, [schemaData])
+  useEffect(() => {
+    if(schemaData?.data && Object.keys(expandedSection).length == 0){
+      const initialExpanded : Record<string, boolean> = {};
+      for (const key in schemaData.data){
+        initialExpanded[key] = true;
+      }
+      setExpandedSection(initialExpanded);
+    }
+  }, [schemaData])
         
-    useEffect(() => {
-        if (configData?.data && Object.keys(form).length === 0) {
-            setForm(configData.data);
-        }
-        else if (configData?.data){   
-            setForm(configData.data);
-        }
-    }, [configData]);
+  useEffect(() => {
+    if (configData?.data && Object.keys(form).length === 0) {
+      setForm(configData.data);
+    }
+    else if (configData?.data){
+      setForm(configData.data);
+    }
+  }, [configData]);
  
 
-    async function reload() {
-        await mutate();
-    }
+  async function reload() {
+    await mutate();
+  }
 
   function emptyValue(sectionKey : string){    
     const section = structuredClone(form[sectionKey]);
@@ -163,18 +163,16 @@ export default function RAGConfigEditor(){
 
   function onFieldChange(sectionKey: string, fieldPath: string, nextValue: any) {
     const absolutePath = `${sectionKey}.${fieldPath}`;
-    
     setForm((prev) => setAt(prev, absolutePath, nextValue));
   }
 
  
-  const ExpandSection = (sectionKey: string) => {
+  const expandSection = (sectionKey: string) => {
     setExpandedSection(prev => {
       const newState = {...prev};
       newState[sectionKey] = !newState[sectionKey];
       return newState;
-    }
-
+      }
     )
   }
 
@@ -255,7 +253,7 @@ export default function RAGConfigEditor(){
                         </div>
                     )}
                       <button
-                        onClick={() => ExpandSection(sectionKey)}
+                        onClick={() => expandSection(sectionKey)}
                         className="inline-flex items-center gap-2 rounded-md bg-[var(--background)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
                         title="Toggel Expand Mode"
                       >
