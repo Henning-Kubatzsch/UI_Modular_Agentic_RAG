@@ -191,8 +191,6 @@ export default function RAGConfigEditor(){
 
   const allKeys = Object.keys(form || {});
 
-  const obj = form.llm;
-
   // here we can define an order how the UI elements should be listet
   const preferred = ["llm", "prompt", "retriever", "retrieval"];
   // first add elements to ordered that are in preferred, then those that are not in preferred

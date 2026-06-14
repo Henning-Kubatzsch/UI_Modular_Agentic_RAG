@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   if (type == "schema"){
       try {
         const res = await fetch
-        (`${BACKEND_URL}/config`, 
+        (`${BACKEND_URL}/get_schema`, 
           {
             method:"GET",
             cache: "no-store"
