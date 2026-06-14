@@ -8,17 +8,18 @@ type AnyObj = Record<string, any>
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
 
 function setAt(prevForm: AnyObj, path: string, newValue: any) {
+    const keys = path.split(".");
+    const newForm = structuredClone(prevForm);
 
-  const keys = path.split(".");
-  const newForm = structuredClone(prevForm ?? {});
-  let current = newForm;
- 
-  for (const key of keys.slice(0, -1)){
-    current[key] ??= {};
-    current = current[key]
-  }
-  current[keys.at(-1)!] = newValue; 
-  return newForm;
+    let current = newForm;
+
+    for(let i=0; i < keys.length - 1; i++){
+        current = current[keys[i]];
+    }
+    current[keys.at(-1)!] = newValue;
+
+    console.log(newForm[keys[0]][keys[1]]);
+    return newForm;
 }
 
 function flattenSection(sectionKey: string, sectionVal: any): { path: string; value: any }[] {
@@ -177,7 +178,6 @@ export default function RAGConfigEditor(){
     )
   }
 
-
   if (configLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-foreground">
@@ -218,84 +218,83 @@ export default function RAGConfigEditor(){
                     </button>
                 </div>
             </div>
-                    {ordered.map((sectionKey) => {      
-          const sectionVal = form?.[sectionKey];
-          const rows = flattenSection(sectionKey, sectionVal);
-          const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);          
-         
+            {ordered.map((sectionKey) => {      
+              const sectionVal = form?.[sectionKey];
+              const rows = flattenSection(sectionKey, sectionVal);
+              const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);          
+          
 
-          return (
-            <section key={sectionKey} className="border border-white/10 bg-white/[0.03] shadow-sm">
-              <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-lg font-semibold">{sectionKey}</h2>
-                  {dirty && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-foreground">unsaved</span>}
-                </div>                
-                <div className="flex items-center gap-2">
-                {expandedSection[sectionKey] && (
+              return (
+                <section key={sectionKey} className="border border-white/10 bg-white/[0.03] shadow-sm">
+                  <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-lg font-semibold">{sectionKey}</h2>
+                      {dirty && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-foreground">unsaved</span>}
+                    </div>                
                     <div className="flex items-center gap-2">
-                        <button
-                            onClick={() =>
-                            setForm((prev) => setAt(prev, sectionKey, structuredClone(serverCfg?.[sectionKey])))
-                            }
-                            className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
-                            disabled={saving === sectionKey || savingAll}
-                        >
-                            Undo                            
-                        </button>
-                        <button
-                            onClick={() => saveSection(sectionKey)}
-                            disabled={saving === sectionKey || savingAll}
-                            className="inline-flex items-center gap-2 rounded-md bg-[var(--button_standard)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
-                            title="Speichert nur diese Section (Merge)"
-                        >
-                            {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
-                            Save
-                        </button>
-                    </div>
-                )}
-                  <button
-                    onClick={() => ExpandSection(sectionKey)}
-                    className="inline-flex items-center gap-2 rounded-md bg-[var(--background)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
-                    title="Toggel Expand Mode"
-                  >
-                    <span>{expandedSection[sectionKey] ? "▾" : "▸"}</span>
-                  </button>
-                  
-                </div>
-                    
-              </div>
-
-              <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
-                expandedSection[sectionKey]
-                  ? "max-h-[2000px] opacity-100"
-                  : "max-h-0 opacity-0"
-              }`}>
-                <div className="px-5 py-4">
-                {/*Adjust collumn count here*/}
-                  <div className="grid gap-2 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2">
-                    {rows.map(({ path, value }) => {
-                      const fieldDef = schemaData?.data[sectionKey]?.properties?.[path];
-                      const hasEnum = Array.isArray(fieldDef?.enum) && fieldDef.enum.length > 0;
+                    {expandedSection[sectionKey] && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() =>
+                                setForm((prev) => setAt(prev, sectionKey, structuredClone(serverCfg?.[sectionKey])))
+                                }
+                                className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+                                disabled={saving === sectionKey || savingAll}
+                            >
+                                Undo                            
+                            </button>
+                            <button
+                                onClick={() => saveSection(sectionKey)}
+                                disabled={saving === sectionKey || savingAll}
+                                className="inline-flex items-center gap-2 rounded-md bg-[var(--button_standard)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+                                title="Speichert nur diese Section (Merge)"
+                            >
+                                {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
+                                Save
+                            </button>
+                        </div>
+                    )}
+                      <button
+                        onClick={() => ExpandSection(sectionKey)}
+                        className="inline-flex items-center gap-2 rounded-md bg-[var(--background)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+                        title="Toggel Expand Mode"
+                      >
+                        <span>{expandedSection[sectionKey] ? "▾" : "▸"}</span>
+                      </button>
                       
-                      return(
-                      <Row
-                        // the key value is for react
-                        key={`${sectionKey}:${path}`}
-                        label={`${path}`}
-                        value={value}
-                        fieldType={hasEnum ? "select" : fieldDef?.type}
-                        enumValues={fieldDef?.enum}
-                        onChange={(prev) => onFieldChange(sectionKey, path, prev)}
-                      />);
-                    })}
+                    </div>
+                        
                   </div>
-                </div>
-              </div>
-            </section>
-          );
-        })}
-            
+
+                  <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
+                    expandedSection[sectionKey]
+                      ? "max-h-[2000px] opacity-100"
+                      : "max-h-0 opacity-0"
+                  }`}>
+                    <div className="px-5 py-4">
+                    {/*Adjust collumn count here*/}
+                      <div className="grid gap-2 lg:grid-cols-4 md:grid-cols-3 sm:grid-cols-2">
+                        {rows.map(({ path, value }) => {
+                          const fieldDef = schemaData?.data[sectionKey]?.properties?.[path];
+                          const hasEnum = Array.isArray(fieldDef?.enum) && fieldDef.enum.length > 0;
+                          
+                          return(
+                          <Row
+                            // the key value is for react
+                            key={`${sectionKey}:${path}`}
+                            label={`${path}`}
+                            value={value}
+                            fieldType={hasEnum ? "select" : fieldDef?.type}
+                            enumValues={fieldDef?.enum}
+                            onChange={(prev) => onFieldChange(sectionKey, path, prev)}
+                          />);
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              );
+            })}            
         </section>
     );
 }
