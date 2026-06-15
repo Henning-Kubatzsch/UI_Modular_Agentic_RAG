@@ -52,7 +52,7 @@ export default function RAGConfigEditor(){
   
   const { data: configData, isLoading: configLoading, mutate } = useSWR("/api/config", fetcher);
   const { data: schemaData, isLoading: schemaIsLoading} = useSWR("/api/config?type=schema", fetcher);
-  const serverCfg = useMemo<AnyObj>(() => configData?.data ?? {}, [configData]);
+  const configDataServerCache = useMemo<AnyObj>(() => configData?.data ?? {}, [configData]);
   const [form, setForm] = useState<AnyObj>({});
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
   const [savingAll, setSavingAll] = useState<boolean>(false);
@@ -218,7 +218,7 @@ export default function RAGConfigEditor(){
             {ordered.map((sectionKey) => {      
               const sectionVal = form?.[sectionKey];
               const rows = flattenSection(sectionKey, sectionVal);
-              const dirty = !shallowEqual(sectionVal, serverCfg?.[sectionKey]);          
+              const dirty = !shallowEqual(sectionVal, configDataServerCache?.[sectionKey]);          
           
 
               return (
@@ -227,35 +227,37 @@ export default function RAGConfigEditor(){
                     <div className="flex items-center gap-3">
                       <h2 className="text-lg font-semibold">{sectionKey}</h2>
                       {dirty && <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs text-foreground">unsaved</span>}
+                      
                     </div>                
                     <div className="flex items-center gap-2">
-                    {expandedSection[sectionKey] && (
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={() =>
-                                setForm((prev) => setAt(prev, sectionKey, structuredClone(serverCfg?.[sectionKey])))
-                                }
-                                className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
-                                disabled={saving === sectionKey || savingAll}
-                            >
-                                Undo                            
-                            </button>
-                            <button
-                                onClick={() => saveSection(sectionKey)}
-                                disabled={saving === sectionKey || savingAll}
-                                className="inline-flex items-center gap-2 rounded-md bg-[var(--button_standard)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
-                                title="Speichert nur diese Section (Merge)"
-                            >
-                                {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
-                                Save
-                            </button>
-                        </div>
-                    )}
+                      {expandedSection[sectionKey] && (
+                          <div className="flex items-center gap-2">
+                              <button
+                                  onClick={() =>
+                                  setForm((prev) => setAt(prev, sectionKey, structuredClone(configDataServerCache?.[sectionKey])))
+                                  }
+                                  className="rounded-md border border-white/20 bg-transparent px-3 py-2 text-sm text-foreground hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20"
+                                  disabled={saving === sectionKey || savingAll}
+                              >
+                                  Undo                            
+                              </button>
+                              <button
+                                  onClick={() => saveSection(sectionKey)}
+                                  disabled={saving === sectionKey || savingAll}
+                                  className="inline-flex items-center gap-2 rounded-md bg-[var(--button_standard)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
+                                  title="Speichert nur diese Section (Merge)"
+                              >
+                                  {saving === sectionKey && <span className="h-2.5 w-2.5 rounded-full bg-white animate-ping" />}
+                                  Save
+                              </button>
+                          </div>
+                      )}
                       <button
                         onClick={() => expandSection(sectionKey)}
                         className="inline-flex items-center gap-2 rounded-md bg-[var(--background)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
-                        title="Toggel Expand Mode"
+                        title="Toggle Expand Mode"
                       >
+                        test
                         <span>{expandedSection[sectionKey] ? "▾" : "▸"}</span>
                       </button>
                       

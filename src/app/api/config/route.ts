@@ -28,8 +28,7 @@ export async function GET(request: Request) {
             method:"GET",
             cache: "no-store"
           }
-        );
-    
+        );    
         if (!res.ok){
           throw new Error(`Backend not responding with status ${res.status}`);
         }
