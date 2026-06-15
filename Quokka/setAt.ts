@@ -221,5 +221,10 @@ console.log(test1.llm.temperature);
 
 // Playing Games
 import {useState} from "react" 
+export default function TestComponent(){
+    const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
+    console.log(Object.keys(expandedSection).length)
+}
 
-const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
+
+

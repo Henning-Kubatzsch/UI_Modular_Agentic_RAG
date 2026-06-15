@@ -89,9 +89,10 @@ export async function PUT(req: Request) {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify(next)
     })
+    const responseData = await response.json();
 
     //await fs.writeFile(FILE, stringify(next), "utf8");
-    return NextResponse.json({ ok: true, mode });
+    return NextResponse.json({ ok: true, mode: mode, message: responseData.message});
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }

@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import useSWR from "swr";
 
 
@@ -57,25 +57,30 @@ export default function RAGConfigEditor(){
   const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
   const [savingAll, setSavingAll] = useState<boolean>(false);
+  const formInitialized = useRef(false);
+  const expandeInitialized = useRef(false);
+  
 
   useEffect(() => {
-    if(schemaData?.data && Object.keys(expandedSection).length === 0){
+    if(schemaData?.data && !expandeInitialized.current){
+      expandeInitialized.current = true;
       const initialExpanded : Record<string, boolean> = {};
       for (const key in schemaData.data){
         initialExpanded[key] = true;
       }
       setExpandedSection(initialExpanded);
     }
-  }, [schemaData, expandedSection])
+  }, [schemaData])
         
   useEffect(() => {
-    if (configData?.data && Object.keys(form).length === 0) {
+    if (configData?.data && !formInitialized.current) {
+      formInitialized.current = true;
       setForm(configData.data);
     }
     else if (configData?.data){
       setForm(configData.data);
     }
-  }, [configData, form]);
+  }, [configData]);
  
 
   async function reload() {
@@ -95,7 +100,6 @@ export default function RAGConfigEditor(){
 
   // SAVE: only selected section → MERGE
   async function saveSection(sectionKey: string) {
-
     setSaving(sectionKey);
     try {
       const sectionPayload = {[sectionKey]:structuredClone(form[sectionKey])}
@@ -108,6 +112,10 @@ export default function RAGConfigEditor(){
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ data: sectionPayload }),
       });
+
+      const resData = await res.json();
+      console.log("resData", resData);
+
       if (!res.ok) {
         // parsing error to {}
         const j = await res.json().catch(() => ({}));
