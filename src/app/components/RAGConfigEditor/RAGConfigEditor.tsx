@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState, useRef, useMemo } from "react"
+import { useEffect, useState, useMemo } from "react"
 import useSWR from "swr";
 
 
@@ -54,19 +54,19 @@ export default function RAGConfigEditor(){
   const { data: schemaData, isLoading: schemaIsLoading} = useSWR("/api/config?type=schema", fetcher);
   const configDataServerCache = useMemo<AnyObj>(() => configData?.data ?? {}, [configData]);
   const [form, setForm] = useState<AnyObj>({});
+  const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState<string | null>(null); // sectionKey
   const [savingAll, setSavingAll] = useState<boolean>(false);
-  const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    if(schemaData?.data && Object.keys(expandedSection).length == 0){
+    if(schemaData?.data && Object.keys(expandedSection).length === 0){
       const initialExpanded : Record<string, boolean> = {};
       for (const key in schemaData.data){
         initialExpanded[key] = true;
       }
       setExpandedSection(initialExpanded);
     }
-  }, [schemaData])
+  }, [schemaData, expandedSection])
         
   useEffect(() => {
     if (configData?.data && Object.keys(form).length === 0) {
@@ -75,7 +75,7 @@ export default function RAGConfigEditor(){
     else if (configData?.data){
       setForm(configData.data);
     }
-  }, [configData]);
+  }, [configData, form]);
  
 
   async function reload() {
@@ -256,8 +256,7 @@ export default function RAGConfigEditor(){
                         onClick={() => expandSection(sectionKey)}
                         className="inline-flex items-center gap-2 rounded-md bg-[var(--background)] px-4 py-2 text-sm font-medium text-foreground hover:bg-[var(--button_standard_hover)] focus:outline-none focus:ring-2 focus:ring-sky-500/40 disabled:opacity-60"
                         title="Toggle Expand Mode"
-                      >
-                        test
+                      >              
                         <span>{expandedSection[sectionKey] ? "▾" : "▸"}</span>
                       </button>
                       

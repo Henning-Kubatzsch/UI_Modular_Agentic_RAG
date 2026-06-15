@@ -1,6 +1,6 @@
 "use client"
 
-import {useEffect, useMemo, useState, useRef} from "react"
+import {useEffect, useState, useRef} from "react"
 //const RAG_URL = process.env.NEXT_PUBLIC_RAG_URL ?? "http://127.0.0.1:8000/rag_ui";
 const RAG_URL = "api/proxy_rag";
 

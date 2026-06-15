@@ -220,5 +220,6 @@ console.log(test1.llm.temperature);
 
 
 // Playing Games
+import {useState} from "react" 
 
-console.log(data2["llm"]["properties"]["family"])
+const [expandedSection, setExpandedSection] = useState<Record<string, boolean>>({});
