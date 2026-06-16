@@ -10,7 +10,7 @@ export default function AskRag() {
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
-  const [form, setForm] = useState<string>("chat");
+  const [mode, setMode] = useState<string>("chat");
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -47,7 +47,7 @@ export default function AskRag() {
       const res = await fetch(RAG_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ q }),
+        body: JSON.stringify({ q, mode }),
         signal: ac.signal,
         mode: "cors",
         credentials: "omit",
@@ -107,7 +107,7 @@ export default function AskRag() {
 
   const onFieldChange = (mode: string) => {
     console.log("changing mode to: ", mode);
-    setForm(mode);
+    setMode(mode);
   }
 
   return (
@@ -118,20 +118,22 @@ export default function AskRag() {
           <h2 className="text-lg font-semibold whitespace-nowrap">Ask the model (RAG)</h2>     
 
           <select
-              value = {form}
+              value = {mode}
               onChange={(e) => onFieldChange(e.target.value)}
               className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
             >
               <option value="chat" className="bg-black text-foreground">
                 chat
               </option>
-                   <option value="firstAid" className="bg-black text-foreground">
+              <option value="firstAid" className="bg-black text-foreground">
                 firstAid
               </option>
-                   <option value="stockAdvice" className="bg-black text-foreground">
+              <option value="stockAdvice" className="bg-black text-foreground">
                 stockAdvice
               </option>
-            
+              <option value="pirate" className="bg-black text-foreground">
+                pirate
+              </option>            
             </select>
         </div>        
 
