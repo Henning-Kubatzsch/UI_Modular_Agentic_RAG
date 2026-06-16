@@ -10,6 +10,8 @@ export default function AskRag() {
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
+  const [form, setForm] = useState<string>("chat");
+
   useEffect(() => {
     return () => abortRef.current?.abort();
   }, []);
@@ -103,11 +105,36 @@ export default function AskRag() {
     setLoading(false);
   }
 
+  const onFieldChange = (mode: string) => {
+    console.log("changing mode to: ", mode);
+    setForm(mode);
+  }
+
   return (
     //<section className="rounded-xl border border-[#3b82f6]/30 bg-white/[0.13]">
     <section className="rounded-xl border border-white/10 bg-white/[0.03] ">
       <div className="flex items-center justify-between border-b border-white/10 px-5 py-3">
-        <h2 className="text-lg font-semibold">Ask the model (RAG)</h2>     
+        <div className="flex items-center gap-4"> 
+          <h2 className="text-lg font-semibold whitespace-nowrap">Ask the model (RAG)</h2>     
+
+          <select
+              value = {form}
+              onChange={(e) => onFieldChange(e.target.value)}
+              className="w-full rounded-md border border-white/20 bg-black px-3 py-2 text-foreground placeholder-white/50 outline-none focus:border-white/30 focus:ring-2 focus:ring-sky-500/40"
+            >
+              <option value="chat" className="bg-black text-foreground">
+                chat
+              </option>
+                   <option value="firstAid" className="bg-black text-foreground">
+                firstAid
+              </option>
+                   <option value="stockAdvice" className="bg-black text-foreground">
+                stockAdvice
+              </option>
+            
+            </select>
+        </div>        
+
         <div className="flex items-center gap-2">
           {!loading ? (
             <button
